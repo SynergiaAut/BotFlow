@@ -10,7 +10,7 @@ export default async function DashboardPage() {
                         <LayoutDashboard className="w-5 h-5" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+                        <h1 className="text-xl font-display font-bold tracking-tight text-slate-900">Dashboard</h1>
                         <p className="text-sm text-slate-500 font-medium mt-0.5">Visión general del rendimiento y actividad</p>
                     </div>
                 </div>
@@ -80,12 +80,12 @@ export default async function DashboardPage() {
                     {/* Main Chart Area */}
                     <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col">
                         <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-base font-bold text-slate-800">Volumen de Conversaciones</h2>
+                            <h2 className="text-base font-display font-bold text-slate-800">Volumen de Conversaciones</h2>
                             <span className="text-xs font-semibold bg-slate-100 text-slate-500 px-3 py-1 rounded-full">Últimos 7 días</span>
                         </div>
                         <div className="flex-1 rounded-xl bg-slate-50 border border-slate-100 border-dashed flex items-center justify-center text-slate-400 min-h-[250px] relative overflow-hidden">
                             {/* Decorative grid for chart placeholder */}
-                            <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(var(--color-slate-300) 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.3 }} />
+                            <div className="absolute inset-0 opacity-30 bg-[radial-gradient(theme(colors.slate.300)_1px,transparent_1px)] [background-size:20px_20px]" />
                             <div className="relative z-10 flex flex-col items-center gap-3">
                                 <div className="p-3 bg-white rounded-xl shadow-sm">
                                     <TrendingUp className="w-6 h-6 text-blue-500" />
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
                     {/* Secondary Chart / List Area */}
                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col">
                         <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-base font-bold text-slate-800">Canales Activos</h2>
+                            <h2 className="text-base font-display font-bold text-slate-800">Canales Activos</h2>
                         </div>
                         <div className="flex-1 rounded-xl bg-slate-50 border border-slate-100 border-dashed flex items-center justify-center text-slate-400 min-h-[250px] relative overflow-hidden">
                             <div className="relative z-10 flex flex-col items-center gap-3">

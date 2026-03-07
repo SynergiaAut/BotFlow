@@ -51,7 +51,7 @@ export default async function ConversationsPage() {
                             <MessageSquareText className="w-5 h-5 text-emerald-600" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold tracking-tight text-slate-900">Bandeja de Entrada</h1>
+                            <h1 className="text-xl font-display font-bold tracking-tight text-slate-900">Bandeja de Entrada</h1>
                             <p className="text-sm text-slate-500 font-medium mt-0.5">Control y derivación de conversaciones atendidas por IA.</p>
                         </div>
                     </div>

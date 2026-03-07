@@ -50,7 +50,7 @@ export default async function CrmPage() {
                         <Users className="w-5 h-5 text-indigo-600" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold tracking-tight text-slate-900">Contactos CRM</h1>
+                        <h1 className="text-xl font-display font-bold tracking-tight text-slate-900">Contactos CRM</h1>
                         <p className="text-sm text-slate-500 font-medium mt-0.5">Gestión de Leads y Clientes corporativos.</p>
                     </div>
                 </div>
