@@ -1,6 +1,74 @@
+import { createClient } from '@/utils/supabase/server'
+import { redirect } from 'next/navigation'
 import { LayoutDashboard, MessageSquareText, Users, TrendingUp, ShieldCheck, PieChart, Activity } from 'lucide-react'
+import { OverviewCharts } from '@/components/dashboard/overview-charts'
 
 export default async function DashboardPage() {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        redirect('/login')
+    }
+
+    const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .single()
+
+    const tenantId = roleData?.tenant_id
+
+    let conversations: any[] = []
+    let contactsCount = 0
+    let closedConversations = 0
+
+    if (tenantId) {
+        const { data: convData } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .order('created_at', { ascending: true })
+
+        if (convData) conversations = convData
+
+        const { count: cCount } = await supabase
+            .from('contacts')
+            .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', tenantId)
+
+        contactsCount = cCount || 0
+        closedConversations = conversations.filter(c => c.status === 'closed').length
+    }
+
+    // Process Channel Data for Donut Chart
+    const channelMap = conversations.reduce((acc, curr) => {
+        const channel = curr.channel || 'web'
+        acc[channel] = (acc[channel] || 0) + 1
+        return acc
+    }, {} as Record<string, number>)
+
+    const channelData = Object.keys(channelMap).map(key => ({
+        name: key.charAt(0).toUpperCase() + key.slice(1),
+        value: channelMap[key]
+    }))
+
+    // Process Volume Data for Area Chart
+    const volumeMap = conversations.reduce((acc, curr) => {
+        // Formatear la fecha para que se vea bonita en el eje X
+        const date = new Date(curr.created_at).toLocaleDateString('es-CO', { month: 'short', day: 'numeric' })
+        acc[date] = (acc[date] || 0) + 1
+        return acc
+    }, {} as Record<string, number>)
+
+    const volumeData = Object.keys(volumeMap).map(date => ({
+        date,
+        count: volumeMap[date] // Map for Recharts Area key
+    }))
+
+    const activeInteractions = conversations.length
+    const conversionRate = activeInteractions > 0 ? Math.round((closedConversations / activeInteractions) * 100) : 0
+
     return (
         <div className="flex flex-col h-full bg-[#f8f9fa]">
             {/* Light Header */}
@@ -27,7 +95,7 @@ export default async function DashboardPage() {
                         <div className="flex justify-between items-start mb-6">
                             <div>
                                 <h3 className="text-[13px] font-bold text-slate-500 tracking-wide uppercase mb-1">Interacciones</h3>
-                                <p className="text-3xl font-black text-slate-800 tracking-tight">1,248</p>
+                                <p className="text-3xl font-black text-slate-800 tracking-tight">{activeInteractions}</p>
                             </div>
                             <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                                 <MessageSquareText className="w-5 h-5" />
@@ -35,7 +103,7 @@ export default async function DashboardPage() {
                         </div>
                         <div className="flex items-center text-sm font-semibold text-emerald-600">
                             <TrendingUp className="w-4 h-4 mr-1.5" />
-                            <span>+12.5% <span className="text-slate-400 font-medium ml-1">vs último mes</span></span>
+                            <span>Total <span className="text-slate-400 font-medium ml-1">histórico</span></span>
                         </div>
                     </div>
 
@@ -43,8 +111,8 @@ export default async function DashboardPage() {
                     <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                         <div className="flex justify-between items-start mb-6">
                             <div>
-                                <h3 className="text-[13px] font-bold text-slate-500 tracking-wide uppercase mb-1">Nuevos Leads</h3>
-                                <p className="text-3xl font-black text-slate-800 tracking-tight">342</p>
+                                <h3 className="text-[13px] font-bold text-slate-500 tracking-wide uppercase mb-1">Total Leads</h3>
+                                <p className="text-3xl font-black text-slate-800 tracking-tight">{contactsCount}</p>
                             </div>
                             <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
                                 <Users className="w-5 h-5" />
@@ -52,7 +120,7 @@ export default async function DashboardPage() {
                         </div>
                         <div className="flex items-center text-sm font-semibold text-emerald-600">
                             <TrendingUp className="w-4 h-4 mr-1.5" />
-                            <span>+44 <span className="text-slate-400 font-medium ml-1">esta semana</span></span>
+                            <span>CRM <span className="text-slate-400 font-medium ml-1">activos</span></span>
                         </div>
                     </div>
 
@@ -61,7 +129,7 @@ export default async function DashboardPage() {
                         <div className="flex justify-between items-start mb-6">
                             <div>
                                 <h3 className="text-[13px] font-bold text-slate-500 tracking-wide uppercase mb-1">Tasa de Cierre IA</h3>
-                                <p className="text-3xl font-black text-slate-800 tracking-tight">89.4%</p>
+                                <p className="text-3xl font-black text-slate-800 tracking-tight">{conversionRate}%</p>
                             </div>
                             <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
                                 <ShieldCheck className="w-5 h-5" />
@@ -69,47 +137,15 @@ export default async function DashboardPage() {
                         </div>
                         <div className="flex items-center text-sm font-semibold text-slate-500">
                             <Activity className="w-4 h-4 mr-1.5 text-emerald-500" />
-                            <span>Rendimiento Óptimo</span>
+                            <span>{closedConversations} tickets resueltos</span>
                         </div>
                     </div>
 
                 </div>
 
-                {/* Charts Row */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Main Chart Area */}
-                    <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col">
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-base font-display font-bold text-slate-800">Volumen de Conversaciones</h2>
-                            <span className="text-xs font-semibold bg-slate-100 text-slate-500 px-3 py-1 rounded-full">Últimos 7 días</span>
-                        </div>
-                        <div className="flex-1 rounded-xl bg-slate-50 border border-slate-100 border-dashed flex items-center justify-center text-slate-400 min-h-[250px] relative overflow-hidden">
-                            {/* Decorative grid for chart placeholder */}
-                            <div className="absolute inset-0 opacity-30 bg-[radial-gradient(theme(colors.slate.300)_1px,transparent_1px)] [background-size:20px_20px]" />
-                            <div className="relative z-10 flex flex-col items-center gap-3">
-                                <div className="p-3 bg-white rounded-xl shadow-sm">
-                                    <TrendingUp className="w-6 h-6 text-blue-500" />
-                                </div>
-                                <p className="text-sm font-medium">Recharts / Tremor Area Chart Placeholder</p>
-                            </div>
-                        </div>
-                    </div>
+                {/* Charts Row Component (Client) */}
+                <OverviewCharts volumeData={volumeData} channelData={channelData} />
 
-                    {/* Secondary Chart / List Area */}
-                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col">
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-base font-display font-bold text-slate-800">Canales Activos</h2>
-                        </div>
-                        <div className="flex-1 rounded-xl bg-slate-50 border border-slate-100 border-dashed flex items-center justify-center text-slate-400 min-h-[250px] relative overflow-hidden">
-                            <div className="relative z-10 flex flex-col items-center gap-3">
-                                <div className="p-3 bg-white rounded-xl shadow-sm">
-                                    <PieChart className="w-6 h-6 text-indigo-500" />
-                                </div>
-                                <p className="text-sm font-medium">Donut Chart Placeholder</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     )
