@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bot, LayoutDashboard, MessageSquareText, Users, LogOut, ChevronRight } from "lucide-react"
+import { Bot, LayoutDashboard, MessageSquareText, Users, LogOut, ChevronRight, FlaskConical } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,12 @@ export function Sidebar({ userEmail }: SidebarProps) {
             icon: MessageSquareText,
             href: "/dashboard/conversations",
             color: "text-blue-500",
+        },
+        {
+            label: "Bot Tester (Gemini)",
+            icon: FlaskConical,
+            href: "/dashboard/bot-tester",
+            color: "text-purple-500",
         },
         {
             label: "CRM Componentes",
