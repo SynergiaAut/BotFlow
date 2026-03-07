@@ -1,9 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
-import { signout } from '../auth/actions'
-import { Button } from '@/components/ui/button'
-import { LogOut, LayoutDashboard, MessageSquareText, Users, Bot } from 'lucide-react'
-import Link from 'next/link'
+import { Sidebar } from '@/components/layout/Sidebar'
 
 export default async function DashboardLayout({
     children,
@@ -18,56 +15,16 @@ export default async function DashboardLayout({
     }
 
     return (
-        <div className="flex h-screen bg-background">
-            {/* Sidebar */}
-            <aside className="w-64 border-r border-white/10 bg-white/5 flex flex-col">
-                <div className="h-16 flex items-center px-6 border-b border-white/10">
-                    <Bot className="w-6 h-6 text-primary mr-2" />
-                    <Link href="/dashboard" className="font-bold text-lg tracking-tight">BotFlow</Link>
-                </div>
+        <div className="flex h-screen bg-background relative overflow-hidden">
+            {/* Subtle global gradient background to accompany the sidebar */}
+            <div className="absolute inset-0 bg-gradient-to-br from-black via-zinc-950 to-black pointer-events-none z-0" />
 
-                <nav className="flex-1 py-4 flex flex-col gap-2 px-3">
-                    <Link href="/dashboard" passHref>
-                        <Button variant="ghost" className="w-full justify-start hover:bg-white/5">
-                            <LayoutDashboard className="w-4 h-4 mr-3" />
-                            Dashboard Overview
-                        </Button>
-                    </Link>
-                    <Link href="/dashboard/conversations" passHref>
-                        <Button variant="ghost" className="w-full justify-start hover:bg-white/5">
-                            <MessageSquareText className="w-4 h-4 mr-3" />
-                            Conversaciones
-                        </Button>
-                    </Link>
-                    <Link href="/dashboard/crm" passHref>
-                        <Button variant="ghost" className="w-full justify-start hover:bg-white/5">
-                            <Users className="w-4 h-4 mr-3" />
-                            CRM Contactos
-                        </Button>
-                    </Link>
-                </nav>
-
-                <div className="p-4 border-t border-white/10">
-                    <div className="flex items-center gap-3 mb-4 px-2">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary uppercase">
-                            {user.email?.charAt(0)}
-                        </div>
-                        <div className="flex flex-col overflow-hidden">
-                            <span className="text-sm font-medium truncate">{user.email}</span>
-                            <span className="text-xs text-muted-foreground">Admin</span>
-                        </div>
-                    </div>
-                    <form action={signout}>
-                        <Button variant="destructive" className="w-full justify-start variant-ghost bg-transparent text-red-400 hover:bg-red-500/10 hover:text-red-400">
-                            <LogOut className="w-4 h-4 mr-3" />
-                            Cerrar Sesión
-                        </Button>
-                    </form>
-                </div>
-            </aside>
+            <div className="z-10 h-full">
+                <Sidebar userEmail={user.email || 'Admin'} />
+            </div>
 
             {/* Dynamic Content */}
-            <main className="flex-1 flex flex-col h-full overflow-hidden">
+            <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 w-full rounded-tl-3xl bg-black/40 backdrop-blur-2xl border-l border-t border-white/10 shadow-2xl shadow-black/50 lg:rounded-tl-[40px] mt-2 ml-[-1px]">
                 {children}
             </main>
         </div>
