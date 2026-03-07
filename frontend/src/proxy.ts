@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     // Llama a middleware y añade comprobaciones de headers/cookies para SSR
     return await updateSession(request)
 }

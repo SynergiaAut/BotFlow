@@ -7,9 +7,12 @@ import { LogOut, LayoutDashboard, MessageSquareText, Users, Bot } from 'lucide-r
 export default async function DashboardPage() {
     const supabase = await createClient()
 
-    // Verify auth
-    const { data: { user }, error } = await supabase.auth.getUser()
-    if (error || !user) {
+    // Verify auth slightly differently so we don't conflict with middleware redirects
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Si el usuario llega aquí sin sesión, el middleware en Vercel debió haberlo atrapado. 
+    // Para entorno de desarrollo local (Next.js server), hacemos un re-chequeo suave:
+    if (!user) {
         redirect('/login')
     }
 

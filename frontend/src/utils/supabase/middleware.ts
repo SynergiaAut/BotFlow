@@ -53,13 +53,22 @@ export async function updateSession(request: NextRequest) {
     // Comprobar Tenant si va al dashboard o está logueado en rutas protegidas
     if (user && !isAuthRoute && request.nextUrl.pathname !== '/') {
         // Validar si tiene una empresa asignada en user_roles
-        const { data: roles } = await supabase
+        const { data: roles, error: rolesError } = await supabase
             .from('user_roles')
             .select('tenant_id')
             .eq('user_id', user.id)
             .limit(1)
 
         const hasTenant = roles && roles.length > 0;
+
+        console.log("MIDDLEWARE DEBUG ->", {
+            path: request.nextUrl.pathname,
+            userId: user.id,
+            hasTenant,
+            rolesCount: roles?.length,
+            rolesData: roles,
+            rolesError
+        });
 
         // Si no tiene tenant Y NO está en onboarding, forzar redirección a Onboarding
         if (!hasTenant && !isOnboardingRoute) {
