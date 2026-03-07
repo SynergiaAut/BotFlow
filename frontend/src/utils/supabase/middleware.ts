@@ -16,7 +16,8 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register')
+    const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
+    const isOnboardingRoute = request.nextUrl.pathname.startsWith('/onboarding')
 
     if (!user && !isAuthRoute && request.nextUrl.pathname !== '/') {
         // Si no está logueado y trata de entrar a un lugar protegido (ejs: /dashboard) lo mando al login
@@ -32,6 +33,31 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
+    // Comprobar Tenant si va al dashboard o está logueado en rutas protegidas
+    if (user && !isAuthRoute && request.nextUrl.pathname !== '/') {
+        // Validar si tiene una empresa asignada en user_roles
+        const { data: roles } = await supabase
+            .from('user_roles')
+            .select('tenant_id')
+            .eq('user_id', user.id)
+            .limit(1)
+
+        const hasTenant = roles && roles.length > 0;
+
+        // Si no tiene tenant Y NO está en onboarding, forzar redirección a Onboarding
+        if (!hasTenant && !isOnboardingRoute) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/onboarding'
+            return NextResponse.redirect(url)
+        }
+
+        // Si sí tiene tenant, y está intentando ir a onboarding otra vez, regresarlo al dashboard
+        if (hasTenant && isOnboardingRoute) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/dashboard'
+            return NextResponse.redirect(url)
+        }
+    }
 
     // IMPORTANTE: Retornar siempre `supabaseResponse` para propagar los Set-Cookie
     return supabaseResponse
