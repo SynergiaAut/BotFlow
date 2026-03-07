@@ -13,31 +13,13 @@ export async function createTenant(formData: FormData) {
         return redirect("/login");
     }
 
-    // 1. Insert the new Tenant
-    const { data: tenant, error: tenantError } = await supabase
-        .from("tenants")
-        .insert([{ name: companyName }])
-        .select()
-        .single();
+    // Use the RPC to create the tenant cleanly safely bypassing RLS for insertion
+    const { data: tenantId, error: rpcError } = await supabase
+        .rpc("create_new_tenant", { company_name: companyName });
 
-    if (tenantError || !tenant) {
-        console.error("Error creating tenant:", tenantError);
+    if (rpcError || !tenantId) {
+        console.error("Error creating tenant via RPC:", rpcError);
         return redirect("/onboarding?error=Error+al+crear+la+empresa");
-    }
-
-    // 2. Link the user to the tenant with role 'owner'
-    const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert([{
-            user_id: user.id,
-            tenant_id: tenant.id,
-            role: "owner"
-        }]);
-
-    if (roleError) {
-        console.error("Error creating user role:", roleError);
-        // Ideally we'd rollback the tenant, but simpler MVP approach is just return error
-        return redirect("/onboarding?error=Error+al+asignar+permisos");
     }
 
     revalidatePath("/dashboard", "layout");
