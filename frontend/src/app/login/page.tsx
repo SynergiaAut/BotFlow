@@ -1,13 +1,28 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { login, signup } from "../auth/actions"
-import { Bot } from "lucide-react"
+import { Bot, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import { useState } from "react"
 
-export default async function LoginPage(props: { searchParams: Promise<{ message?: string }> }) {
-    const searchParams = await props.searchParams;
-    const message = searchParams?.message
+export default function LoginPage() {
+    const searchParams = useSearchParams()
+    const message = searchParams.get("message")
+    const [isLoading, setIsLoading] = useState(false)
+
+    async function handleAction(formData: FormData, type: 'login' | 'signup') {
+        setIsLoading(true)
+        if (type === 'login') {
+            await login(formData)
+        } else {
+            await signup(formData)
+        }
+        setIsLoading(false)
+    }
 
     return (
         <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -56,10 +71,23 @@ export default async function LoginPage(props: { searchParams: Promise<{ message
                     )}
 
                     <div className="flex flex-col gap-3 mt-4">
-                        <Button formAction={login} className="w-full rounded-full shadow-lg hover:shadow-primary/25 transition-all">
+                        <Button
+                            type="submit"
+                            disabled={isLoading}
+                            formAction={(formData) => handleAction(formData, 'login')}
+                            className="w-full rounded-full shadow-lg hover:shadow-primary/25 transition-all"
+                        >
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Ingresar
                         </Button>
-                        <Button formAction={signup} variant="outline" className="w-full rounded-full border-white/10 bg-transparent hover:bg-white/5">
+                        <Button
+                            type="submit"
+                            disabled={isLoading}
+                            formAction={(formData) => handleAction(formData, 'signup')}
+                            variant="outline"
+                            className="w-full rounded-full border-white/10 bg-transparent hover:bg-white/5"
+                        >
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Solicitar Acceso
                         </Button>
                     </div>
