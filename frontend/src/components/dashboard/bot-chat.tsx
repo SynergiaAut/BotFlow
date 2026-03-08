@@ -127,8 +127,12 @@ export function BotChat({ bots }: BotChatProps) {
                         <div className="w-8 h-8 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center shrink-0">
                             <Bot className="w-4 h-4 text-indigo-600" />
                         </div>
-                        <div className="px-5 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-400 rounded-tl-sm shadow-sm flex items-center">
-                            <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
+                        <div className="px-5 py-4 rounded-2xl bg-white border border-slate-200 rounded-tl-sm shadow-sm flex items-center justify-center min-w-[80px]">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
+                                <div className="w-2 h-2 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.15s]" />
+                                <div className="w-2 h-2 rounded-full bg-slate-400 animate-bounce" />
+                            </div>
                         </div>
                     </div>
                 )}

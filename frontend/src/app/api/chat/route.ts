@@ -91,6 +91,13 @@ export async function POST(req: Request) {
             return new Response(JSON.stringify({ error: "API KEY faltante" }), { status: 500 });
         }
 
+        // ==========================================
+        // MITO DE SIMULACIÓN B2B: Retraso Humano
+        // Simular que el "Asesor" lee la pregunta
+        // ==========================================
+        const typingDelay = Math.floor(Math.random() * (2500 - 1000 + 1) + 1000); // Entre 1.0s y 2.5s
+        await new Promise(r => setTimeout(r, typingDelay));
+
         const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
         const model = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
