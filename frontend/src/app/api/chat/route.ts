@@ -16,14 +16,14 @@ export async function POST(req: Request) {
             });
         }
 
-        const result = streamText({
-            model: google('gemini-1.5-flash'),
+        const result = await streamText({
+            model: google('gemini-1.5-flash') as any,
             system: systemPrompt || "Eres un asistente virtual útil y profesional.",
             messages,
             temperature: 0.7,
         });
 
-        return (result as any).toDataStreamResponse ? (result as any).toDataStreamResponse() : result.toTextStreamResponse();
+        return result.toDataStreamResponse();
 
     } catch (error: any) {
         return new Response(JSON.stringify({ error: error.message || 'Error en el servidor AI' }), {
