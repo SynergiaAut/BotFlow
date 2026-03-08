@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useChat, Message } from 'ai/react'
 import { Bot, Send, User, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { getTestConversationMessages } from '@/app/actions/chat-actions'
 
 interface BotChatProps {
     bots: any[]
@@ -15,15 +16,38 @@ export function BotChat({ bots }: BotChatProps) {
     const selectedBot = bots.find(b => b.id === selectedBotId)
 
     // Initialization of Vercel AI SDK useChat
-    const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
         api: '/api/chat',
         body: {
-            systemPrompt: selectedBot?.system_prompt || "Eres un asistente virtual útil y profesional."
+            systemPrompt: selectedBot?.system_prompt || "Eres un asistente virtual útil y profesional.",
+            botId: selectedBot?.id
         },
         onError: (error: Error) => {
             alert("Error: " + error.message)
         }
     })
+
+    // Cargar historial de chat desde Supabase al cambiar de bot
+    useEffect(() => {
+        let mounted = true
+        async function loadHistory() {
+            if (!selectedBotId) return
+            const { messages: history } = await getTestConversationMessages(selectedBotId)
+            if (mounted && history) {
+                // Casting preventivo para acoplar al formato exigido por useChat
+                setMessages(history as Message[])
+            }
+        }
+
+        loadHistory()
+        return () => { mounted = false }
+    }, [selectedBotId, setMessages])
+
+    // Limpiar el historial local y cargar el nuevo al cambiar de bot
+    const handleBotChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setSelectedBotId(e.target.value)
+        setMessages([])
+    }
 
     if (bots.length === 0) {
         return (
@@ -57,7 +81,7 @@ export function BotChat({ bots }: BotChatProps) {
                     aria-label="Seleccionar Bot"
                     className="text-sm bg-white border border-slate-200 rounded-md py-1.5 px-3 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     value={selectedBotId}
-                    onChange={(e) => setSelectedBotId(e.target.value)}
+                    onChange={handleBotChange}
                 >
                     {bots.map(b => (
                         <option key={b.id} value={b.id}>{b.name}</option>
