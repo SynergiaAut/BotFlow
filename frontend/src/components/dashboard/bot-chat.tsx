@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { useChat, Message } from '@ai-sdk/react'
+import { useChat, Message } from 'ai/react'
 import { Bot, Send, User, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -20,7 +20,6 @@ export function BotChat({ bots }: BotChatProps) {
         body: {
             systemPrompt: selectedBot?.system_prompt || "Eres un asistente virtual útil y profesional."
         },
-        // Adding custom error handling if API key is missing
         onError: (error: Error) => {
             alert("Error: " + error.message)
         }
