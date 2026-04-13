@@ -95,16 +95,55 @@ export default function BotChatWidget({ initialBot }: { initialBot: any }) {
         setSessionId(getOrCreateSessionId())
     }, [])
 
-    const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    const [isTypingHuman, setIsTypingHuman] = useState(false)
+    const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
         api: '/api/widget/chat',
         body: {
             botId: initialBot.id,
             sessionId: sessionId || 'guest_fallback'
         },
+        onResponse: async (response) => {
+            // Si la respuesta es JSON, es porque viene fragmentada (humanizada)
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                if (data.fragments && data.fragments.length > 0) {
+                    processFragments(data.fragments);
+                }
+            }
+        },
         onError: (error: Error) => {
             console.error("Chat Error:", error)
         }
     })
+
+    const processFragments = async (fragments: any[]) => {
+        setIsTypingHuman(true);
+        
+        for (let i = 0; i < fragments.length; i++) {
+            const fragment = fragments[i];
+            
+            // 1. Simular delay inicial (reacción)
+            await new Promise(r => setTimeout(r, fragment.delayMs));
+            
+            // 2. Simular tiempo de escritura (typing bubble visible)
+            setIsTypingHuman(true);
+            scrollToBottom();
+            await new Promise(r => setTimeout(r, fragment.typingMs));
+            
+            // 3. Agregar el mensaje a la lista
+            setIsTypingHuman(false);
+            setMessages((prev: Message[]) => [
+                ...prev,
+                {
+                    id: `frag-${Date.now()}-${i}`,
+                    role: 'assistant',
+                    content: fragment.text
+                } as Message
+            ]);
+            scrollToBottom();
+        }
+    }
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -114,7 +153,7 @@ export default function BotChatWidget({ initialBot }: { initialBot: any }) {
 
     useEffect(() => {
         scrollToBottom()
-    }, [messages])
+    }, [messages, isTypingHuman])
 
     // Welcome Message Inicial (Mock)
     const hasMessages = messages.length > 0;
@@ -159,7 +198,7 @@ export default function BotChatWidget({ initialBot }: { initialBot: any }) {
                     </div>
                 ))}
 
-                {isLoading && messages[messages.length - 1]?.role === 'user' && (
+                {(isLoading || isTypingHuman) && (
                     <CognitiveTypingBubble onVisible={scrollToBottom} />
                 )}
 

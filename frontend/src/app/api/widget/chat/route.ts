@@ -39,15 +39,26 @@ export async function POST(req: Request) {
             botId,
             messages,
             channel: 'web_widget',
-            platformId: sessionId, // Usamos el ID de sesión autogenerado en localStorage como platformId
-            streamResponse: true // Mantenemos streaming para el frontend del Iframe
+            platformId: sessionId,
+            streamResponse: true 
         });
+
+        // Si hay fragmentos (modo humanizado), respondemos JSON para que el widget maneje la secuencia
+        if (result.fragments) {
+            return new Response(JSON.stringify({ 
+                text: result.text, 
+                fragments: result.fragments,
+                conversationId: result.conversationId 
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
 
         if (result.stream) {
             return new StreamingTextResponse(result.stream);
         }
 
-        return new Response(JSON.stringify({ text: result.text }), {
+        return new Response(JSON.stringify({ text: result.text, conversationId: result.conversationId }), {
             headers: { 'Content-Type': 'application/json' }
         });
 

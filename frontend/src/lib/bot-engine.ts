@@ -2,6 +2,13 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleGenerativeAIStream } from 'ai';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { Humanizer } from './humanizer';
+import dns from 'node:dns';
+
+// Estabilidad Synerg-IA: Forzar IPv4 para evitar cuelgues en VPS (Hetzner/Ubuntu 24)
+if (typeof dns.setDefaultResultOrder === 'function') {
+    dns.setDefaultResultOrder('ipv4first');
+}
 
 export interface BotMessage {
     role: 'user' | 'assistant' | 'system';
@@ -12,6 +19,7 @@ export interface EngineResult {
     stream?: ReadableStream;
     text?: string;
     conversationId: string;
+    fragments?: { text: string; delayMs: number; typingMs: number }[];
 }
 
 /**
@@ -175,10 +183,8 @@ export async function processBotMessage(
     let contextMessages: any[] = [];
 
     if (messages.length > 1) {
-        // Buffer local (n8n mode): Contexto rico e instantáneo
         contextMessages = [...messages];
     } else {
-        // Respaldo DB: Recuperamos el hilo de la charla
         const { data: history } = await supabase
             .from('messages')
             .select('role, content')
@@ -189,10 +195,21 @@ export async function processBotMessage(
         contextMessages = history && history.length > 0 ? history : messages;
     }
 
-    // 5. Configurar Prompt y Modelo con Robustez
+    // 5. Configurar Prompt y Modelo con Robustez y Humanización
     const { data: botData, error: botError } = await supabase
         .from('bots')
-        .select('system_prompt, name, tone_style, use_emojis, specialized_industry, avatar_url')
+        .select(`
+            system_prompt, 
+            name, 
+            tone_style, 
+            use_emojis, 
+            specialized_industry, 
+            avatar_url,
+            humanization_enabled,
+            split_messages,
+            words_per_minute,
+            max_chars_per_fragment
+        `)
         .eq('id', botId)
         .single();
 
@@ -236,23 +253,20 @@ REGLAS DE CATÁLOGO:
 
 CONVERTIR LEADS (PIPELINE CRM):
 Si notas que el usuario tiene intención de compra/agendamiento, pídeles educadamente su nombre y teléfono (o email).
-SI EL USUARIO REVELA ESTOS DATOS DURANTE LA CHARLA (Nombre, Teléfono o Email), es IMPERATIVO que al final de tu respuesta incluyas este bloque exacto en texto plano (reemplaza los valores con la info que tengas):
+SI EL USUARIO REVELA ESTOS DATOS DURANTE LA CHARLA (Nombre, Teléfono o Email), es IMPERATIVO que al final de tu respuesta incluyas este bloque exacto en texto plano:
 [LEAD_ACTION: {"name": "Juan", "phone": "123456", "email": "juan@mail.com", "intent": "high"}]
 Nunca muestres este bloque como código o hables sobre él al usuario; es solo para el sistema.
 
 CONTEXTO DEL NEGOCIO:
 ${ragContext}
 
-ROL PERSONALIZADO: ${botData?.system_prompt || \`Asesor \${industry} enfocado en ayudar al cliente.\`}
+ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en ayudar al cliente.`}
 `;
 
-    // Lista de modelos a intentar (Nombres corregidos para estabilidad)
     const modelsToTry = [
         'gemini-1.5-flash-latest',
         'gemini-1.5-pro-latest',
-        'gemini-pro',
-        'gemini-1.5-flash',
-        'gemini-2.0-flash-exp'
+        'gemini-pro'
     ];
     let lastError: any = null;
 
@@ -278,31 +292,15 @@ ROL PERSONALIZADO: ${botData?.system_prompt || \`Asesor \${industry} enfocado en
             if (rolesAlt.length === 0) rolesAlt.push({ role: 'user', parts: [{ text: 'Hola' }] });
             const googleMessages = { contents: rolesAlt };
 
-            if (streamResponse) {
+            // Verificamos si debemos HUMANIZAR (Fraccionar)
+            const shouldHumanize = botData?.humanization_enabled && botData?.split_messages;
+
+            if (streamResponse && !shouldHumanize) {
+                // Streaming tradicional (sin fraccionar)
                 const streamingResponse = await model.generateContentStream(googleMessages);
                 const stream = GoogleGenerativeAIStream(streamingResponse, {
                     onCompletion: async (completion: string) => {
-                        let cleanedContent = completion;
-                        const leadActionMatch = completion.match(/\[LEAD_ACTION:\s*({[^}]+})\s*\]/);
-                        
-                        if (leadActionMatch) {
-                            cleanedContent = completion.replace(leadActionMatch[0], '').trim();
-                            try {
-                                const leadData = JSON.parse(leadActionMatch[1]);
-                                
-                                // Actualizar Lead en BD
-                                const updateData: any = { lead_stage: 'qualified' };
-                                if (leadData.name && leadData.name !== '') updateData.name = leadData.name;
-                                if (leadData.phone && leadData.phone !== '') updateData.phone_number = leadData.phone;
-                                if (leadData.email && leadData.email !== '') updateData.email = leadData.email;
-                                
-                                await supabase.from('contacts').update(updateData).eq('id', actualContactId);
-                            } catch (e) {
-                                console.error('Error parsing lead JSON:', e);
-                            }
-                        }
-
-                        // Guardar respuesta limpia del asistente
+                        const { cleanedContent } = extractLeadAction(completion, actualContactId, supabase);
                         await supabase.from('messages').insert({
                             tenant_id: tenantId,
                             conversation_id: conversationId,
@@ -312,37 +310,14 @@ ROL PERSONALIZADO: ${botData?.system_prompt || \`Asesor \${industry} enfocado en
                     }
                 });
 
-                // Throttle para humanización
-                const throttleTransform = new TransformStream({
-                    async transform(chunk, controller) {
-                        await new Promise(r => setTimeout(r, 80));
-                        controller.enqueue(chunk);
-                    }
-                });
-
-                return { stream: stream.pipeThrough(throttleTransform), conversationId };
+                return { stream, conversationId };
             } else {
+                // Modo Fraccionado o Sin Streaming
                 const result = await model.generateContent(googleMessages);
-                const text = result.response.text();
+                const fullText = result.response.text();
+                const { cleanedContent } = extractLeadAction(fullText, actualContactId, supabase);
 
-                let cleanedContent = text;
-                const leadActionMatch = text.match(/\[LEAD_ACTION:\s*({[^}]+})\s*\]/);
-                
-                if (leadActionMatch) {
-                    cleanedContent = text.replace(leadActionMatch[0], '').trim();
-                    try {
-                        const leadData = JSON.parse(leadActionMatch[1]);
-                        const updateData: any = { lead_stage: 'qualified' };
-                        if (leadData.name && leadData.name !== '') updateData.name = leadData.name;
-                        if (leadData.phone && leadData.phone !== '') updateData.phone_number = leadData.phone;
-                        if (leadData.email && leadData.email !== '') updateData.email = leadData.email;
-                        
-                        await supabase.from('contacts').update(updateData).eq('id', actualContactId);
-                    } catch (e) {
-                        console.error('Error parsing lead JSON fallback:', e);
-                    }
-                }
-
+                // Persistir el mensaje completo en la base de datos de una vez
                 await supabase.from('messages').insert({
                     tenant_id: tenantId,
                     conversation_id: conversationId,
@@ -350,34 +325,53 @@ ROL PERSONALIZADO: ${botData?.system_prompt || \`Asesor \${industry} enfocado en
                     content: cleanedContent
                 });
 
+                if (shouldHumanize) {
+                    const humanizer = new Humanizer({
+                        wordsPerMinute: botData?.words_per_minute,
+                        maxCharsPerFragment: botData?.max_chars_per_fragment
+                    });
+                    const fragments = humanizer.getSequence(cleanedContent);
+                    return { text: cleanedContent, conversationId, fragments };
+                }
+
                 return { text: cleanedContent, conversationId };
             }
         } catch (error: any) {
             lastError = error;
             console.warn(`⚠️ Intento fallido con modelo ${modelName}:`, error.message);
-            // El bot ajustará su "humanidad" basada en los parámetros del tenant sin perder el sello de Skylab.
-            // Si el error es 404 (model not found), intentamos con el siguiente en la lista
             if (error.message.includes('404') || error.message.includes('not found') || error.message.includes('429')) {
                 continue;
             }
-            break; // Si es otro tipo de error grave, no seguimos intentando
+            break;
         }
     }
 
-    // Si llegamos aquí es porque todos los intentos fallaron
     console.error(`❌ Todos los modelos de IA fallaron. Último error:`, lastError?.message);
     const fallbackText = "Lo siento, tuve un pequeño inconveniente técnico. ¿Podrías repetirme eso por favor? 🙏";
+    return { text: fallbackText, conversationId };
+}
 
-    if (!streamResponse) {
-        return { text: fallbackText, conversationId };
-    } else {
-        const encoder = new TextEncoder();
-        const stream = new ReadableStream({
-            start(controller) {
-                controller.enqueue(encoder.encode(fallbackText));
-                controller.close();
-            }
-        });
-        return { stream, conversationId };
+/**
+ * Utilidad para extraer acciones de Lead y limpiar el contenido
+ */
+function extractLeadAction(text: string, contactId: string, supabase: any) {
+    let cleanedContent = text;
+    const leadActionMatch = text.match(/\[LEAD_ACTION:\s*({[^}]+})\s*\]/);
+
+    if (leadActionMatch) {
+        cleanedContent = text.replace(leadActionMatch[0], '').trim();
+        try {
+            const leadData = JSON.parse(leadActionMatch[1]);
+            const updateData: any = { lead_stage: 'qualified' };
+            if (leadData.name) updateData.name = leadData.name;
+            if (leadData.phone) updateData.phone_number = leadData.phone;
+            if (leadData.email) updateData.email = leadData.email;
+            
+            // Fuego y olvido para no bloquear el hilo principal
+            supabase.from('contacts').update(updateData).eq('id', contactId).then();
+        } catch (e) {
+            console.error('Error parsing lead JSON:', e);
+        }
     }
+    return { cleanedContent };
 }

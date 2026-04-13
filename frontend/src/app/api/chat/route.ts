@@ -41,11 +41,22 @@ export async function POST(req: Request) {
             platformId: user.id
         });
 
+        // Respuesta estructurada para humanización (si hay fragmentos)
+        if (result.fragments) {
+            return new Response(JSON.stringify({ 
+                text: result.text, 
+                fragments: result.fragments,
+                conversationId: result.conversationId 
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         if (result.stream) {
             return new StreamingTextResponse(result.stream);
         }
 
-        return new Response(JSON.stringify({ text: result.text }), {
+        return new Response(JSON.stringify({ text: result.text, conversationId: result.conversationId }), {
             headers: { 'Content-Type': 'application/json' }
         });
 
@@ -54,5 +65,3 @@ export async function POST(req: Request) {
         return new Response(JSON.stringify({ error: error.message || 'Error interno' }), { status: 500 });
     }
 }
-
-

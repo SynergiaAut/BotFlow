@@ -39,7 +39,11 @@ export default function BotBuilderPage() {
         prompt: 'Eres un asistente experto en...',
         avatarUrl: '',
         color_theme: '#4f46e5',
-        human_level: 80
+        human_level: 80,
+        humanization_enabled: true,
+        split_messages: true,
+        words_per_minute: 60,
+        max_chars_per_fragment: 180
     });
 
     const supabase = createClient();
@@ -51,8 +55,6 @@ export default function BotBuilderPage() {
                 const { data: { user } } = await supabase.auth.getUser()
                 if (!user) return
 
-                // Parallel fetch for tenant and bot if tenant is known, 
-                // but since we need tenantId for bot, we fetch tenant first but with maybeSingle
                 const { data: roles } = await supabase
                     .from('user_roles')
                     .select('tenant_id')
@@ -72,10 +74,14 @@ export default function BotBuilderPage() {
                             name: bot.name || 'Skylab Assistant',
                             tone: bot.personality || 'friendly',
                             emojis: 'high',
-                            prompt: bot.welcome_message || 'Eres un asistente...',
+                            prompt: bot.system_prompt || 'Eres un asistente...',
                             avatarUrl: bot.avatar_url || '',
                             color_theme: bot.color_theme || '#4f46e5',
-                            human_level: 80
+                            human_level: 80,
+                            humanization_enabled: bot.humanization_enabled ?? true,
+                            split_messages: bot.split_messages ?? true,
+                            words_per_minute: bot.words_per_minute || 60,
+                            max_chars_per_fragment: bot.max_chars_per_fragment || 180
                         })
                     }
                 }
@@ -101,8 +107,12 @@ export default function BotBuilderPage() {
                 .update({
                     name: config.name,
                     personality: config.tone,
-                    welcome_message: config.prompt,
+                    system_prompt: config.prompt,
                     color_theme: config.color_theme,
+                    humanization_enabled: config.humanization_enabled,
+                    split_messages: config.split_messages,
+                    words_per_minute: config.words_per_minute,
+                    max_chars_per_fragment: config.max_chars_per_fragment
                 })
                 .eq('id', botId);
 
@@ -211,6 +221,91 @@ export default function BotBuilderPage() {
                                     </button>
                                 ))}
                             </div>
+                        </div>
+
+                        {/* Humanization Engine Config */}
+                        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[48px] p-10 shadow-sm transition-all hover:shadow-2xl hover:shadow-indigo-500/5 group">
+                            <div className="flex items-center justify-between mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-amber-600/10 rounded-2xl flex items-center justify-center text-amber-600 border border-amber-500/20">
+                                        <Layers className="w-6 h-6" />
+                                    </div>
+                                    <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Humanization Engine</h3>
+                                </div>
+                                <div className="flex items-center gap-3 bg-slate-100 dark:bg-white/5 p-2 rounded-2xl border border-slate-200 dark:border-white/10">
+                                    <span className="text-[10px] font-black uppercase tracking-widest px-3">{config.humanization_enabled ? 'Activado' : 'Desactivado'}</span>
+                                    <button 
+                                        onClick={() => setConfig({ ...config, humanization_enabled: !config.humanization_enabled })}
+                                        className={`w-12 h-6 rounded-full transition-all relative ${config.humanization_enabled ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                                    >
+                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${config.humanization_enabled ? 'right-1' : 'left-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <AnimatePresence>
+                                {config.humanization_enabled && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="space-y-8 overflow-hidden"
+                                    >
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-center">
+                                                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fraccionamiento de Mensajes</Label>
+                                                    <button 
+                                                        onClick={() => setConfig({ ...config, split_messages: !config.split_messages })}
+                                                        className={`text-[10px] font-black uppercase px-3 py-1 rounded-lg ${config.split_messages ? 'bg-indigo-600/10 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}
+                                                    >
+                                                        {config.split_messages ? 'On' : 'Off'}
+                                                    </button>
+                                                </div>
+                                                <p className="text-[11px] text-slate-500 leading-relaxed">Divide respuestas largas en burbujas pequeñas para una apariencia más humana.</p>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-center">
+                                                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Velocidad de Escritura (PPM)</Label>
+                                                    <span className="text-sm font-black text-indigo-600">{config.words_per_minute}</span>
+                                                </div>
+                                                <input 
+                                                    type="range" 
+                                                    min="30" max="150" step="5"
+                                                    value={config.words_per_minute}
+                                                    onChange={(e) => setConfig({ ...config, words_per_minute: parseInt(e.target.value) })}
+                                                    className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                                />
+                                                <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase">
+                                                    <span>Lento</span>
+                                                    <span>Normal</span>
+                                                    <span>Veloz</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-6 bg-amber-50 dark:bg-amber-500/5 rounded-3xl border border-amber-100 dark:border-amber-500/20">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <Zap className="w-4 h-4 text-amber-500" />
+                                                <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Configuración Avanzada</h4>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Máximo de Caracteres por Burbuja</Label>
+                                                <div className="flex gap-4 items-center">
+                                                    <input 
+                                                        type="number" 
+                                                        value={config.max_chars_per_fragment}
+                                                        onChange={(e) => setConfig({ ...config, max_chars_per_fragment: parseInt(e.target.value) })}
+                                                        className="w-24 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold"
+                                                    />
+                                                    <span className="text-[10px] text-slate-500 uppercase font-medium">Recomendado: 150-250 caracteres</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
 
