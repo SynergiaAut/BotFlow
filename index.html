@@ -1,0 +1,3866 @@
+<!DOCTYPE html>
+<html lang="es" data-lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skylab Human Bot — Automatiza conversaciones sin perder el toque humano</title>
+  <meta name="description" content="Crea asistentes con IA que entienden tu negocio, conectan con tus clientes y operan los 24/7 en WhatsApp, Telegram y más." />
+  <link rel="icon" href="brand-kit/skylab-app-icon.png" type="image/png" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ===========================
+       RESET & BASE
+    =========================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cyan:        #00B4DB;
+      --cyan-hover:  #26C7EA;
+      --cyan-dim:    rgba(0,180,219,.15);
+      --bg-deep:     #070B12;
+      --bg-main:     #0B0F17;
+      --bg-2:        #111722;
+      --bg-3:        #161D2A;
+      --border:      rgba(255,255,255,.08);
+      --border-cyan: rgba(0,180,219,.22);
+      --text-1:      #FFFFFF;
+      --text-2:      #A6B3C4;
+      --text-3:      #7E8A9C;
+      --text-4:      #576173;
+      --success:     #6EE7B7;
+      --radius:      12px;
+      --radius-sm:   8px;
+      --shadow-cyan: 0 0 40px rgba(0,180,219,.18);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-deep);
+      background-image:
+        linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.028) 1px, transparent 1px);
+      background-size: 52px 52px;
+      color: var(--text-1);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* position:relative on all elements handled per-container below */
+
+    /* Typography */
+    h1, h2, h3, h4, h5 { font-family: 'Space Grotesk', sans-serif; line-height: 1.08; }
+    h1 { font-size: clamp(3.2rem, 6.5vw, 6.2rem); font-weight: 800; letter-spacing: -.025em; line-height: 1.03; }
+    h2 { font-size: clamp(2.1rem, 4vw, 3.4rem); font-weight: 700; letter-spacing: -.015em; }
+    h3 { font-size: 1.45rem; font-weight: 600; }
+
+    a { color: inherit; text-decoration: none; }
+
+    img { max-width: 100%; }
+
+    /* ===========================
+       UTILITIES
+    =========================== */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    .container--wide { max-width: 1360px; margin: 0 auto; padding: 0 24px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 99px;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      background: rgba(0,180,219,.08);
+      border: 1px solid rgba(0,180,219,.22);
+      color: #9BEAFF;
+    }
+
+    .section-label {
+      display: block;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s ease;
+      border: none;
+      font-family: 'Outfit', sans-serif;
+    }
+    .btn-primary {
+      background: var(--cyan);
+      color: #061018;
+    }
+    .btn-primary:hover {
+      background: var(--cyan-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(0,180,219,.35);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      color: #D8E1EA;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,.08);
+      border-color: rgba(255,255,255,.16);
+    }
+    .btn-lg { padding: 16px 36px; font-size: 1.1rem; }
+    .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+    .card {
+      background: rgba(255,255,255,.035);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: border-color .2s, background .2s;
+    }
+    .card:hover {
+      border-color: var(--border-cyan);
+      background: rgba(255,255,255,.05);
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #fff 30%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ===========================
+       NAV
+    =========================== */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7,11,18,.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      height: 68px;
+    }
+
+    .nav-logo { display: flex; align-items: center; flex-shrink: 0; }
+    .nav-logo img { height: 48px; }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+      list-style: none;
+    }
+    .nav-links a {
+      padding: 7px 13px;
+      border-radius: var(--radius-sm);
+      font-size: .95rem;
+      font-weight: 500;
+      color: var(--text-2);
+      transition: color .15s, background .15s;
+    }
+    .nav-links a:hover { color: var(--text-1); background: rgba(255,255,255,.05); }
+
+    .nav-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+    .lang-toggle {
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      font-size: .8rem;
+      font-weight: 600;
+    }
+    .lang-toggle button {
+      padding: 6px 10px;
+      background: transparent;
+      border: none;
+      color: var(--text-3);
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: .8rem;
+      transition: all .15s;
+    }
+    .lang-toggle button.active {
+      background: var(--cyan);
+      color: #061018;
+    }
+
+    /* Mobile nav */
+    .nav-hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .nav-hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text-2);
+      border-radius: 99px;
+      transition: transform .2s;
+    }
+
+    @media (max-width: 860px) {
+      .nav-links, .nav-right .btn-secondary { display: none; }
+      .nav-hamburger { display: flex; }
+      .nav-right { gap: 8px; }
+    }
+
+    /* ===========================
+       HERO
+    =========================== */
+    .hero {
+      padding: 80px 0 60px;
+      text-align: left;
+      position: relative;
+      background: radial-gradient(ellipse 700px 400px at 50% 300px, rgba(0,180,219,.14) 0%, transparent 70%);
+      overflow: visible;
+    }
+
+    .hero-glow { display: none !important; }
+
+    .hero .badge { margin-bottom: 28px; }
+
+    .hero h1 { margin: 0 0 20px; max-width: 640px; }
+
+    .hero p { max-width: 540px; margin: 0 0 40px; font-size: 1.22rem; color: var(--text-2); line-height: 1.7; }
+
+    .hero-ctas { display: flex; align-items: center; justify-content: flex-start; gap: 12px; flex-wrap: wrap; }
+
+    .hero-mockup {
+      margin-top: 64px;
+      position: relative;
+    }
+
+    .hero-mockup::before {
+      content: '';
+      position: absolute;
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      height: 120px;
+      background: radial-gradient(ellipse, rgba(0,180,219,.22) 0%, transparent 70%);
+      filter: blur(20px);
+      z-index: 0;
+    }
+
+    .mockup-browser {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      max-width: 960px;
+      margin: 0 auto;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6), 0 0 0 1px var(--border);
+    }
+
+    .mockup-bar {
+      background: var(--bg-3);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #FF5F57; }
+    .dot-y { background: #FFBD2E; }
+    .dot-g { background: #28CA41; }
+
+    .mockup-url {
+      flex: 1;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: .78rem;
+      color: var(--text-3);
+      margin: 0 12px;
+    }
+
+    .mockup-content {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      height: 420px;
+    }
+
+    .mockup-sidebar {
+      background: var(--bg-main);
+      border-right: 1px solid var(--border);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+    .sidebar-logo img { height: 20px; }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 7px;
+      font-size: .8rem;
+      color: var(--text-3);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .sidebar-item.active {
+      background: rgba(0,180,219,.12);
+      color: var(--cyan);
+      border: 1px solid rgba(0,180,219,.18);
+    }
+    .sidebar-item:hover:not(.active) { background: rgba(255,255,255,.04); color: var(--text-2); }
+    .sidebar-icon { width: 15px; height: 15px; opacity: .7; }
+
+    .mockup-main {
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .mockup-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .mockup-title { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 600; }
+
+    .mockup-btn-sm {
+      padding: 6px 14px;
+      background: var(--cyan);
+      color: #061018;
+      border-radius: 6px;
+      font-size: .75rem;
+      font-weight: 700;
+    }
+
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .metric-card {
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 12px;
+    }
+    .metric-label { font-size: .68rem; color: var(--text-3); margin-bottom: 4px; }
+    .metric-val { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--text-1); }
+    .metric-change { font-size: .68rem; color: var(--success); }
+
+    .mockup-bots {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bot-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 80px 70px 80px;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: .75rem;
+    }
+
+    .bot-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+    }
+
+    .bot-name { font-weight: 600; color: var(--text-1); }
+    .bot-channel { color: var(--text-3); font-size: .68rem; }
+    .bot-convo { color: var(--text-2); text-align: right; }
+    .bot-sat { color: var(--success); text-align: right; font-weight: 600; }
+
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); display: inline-block; margin-right: 5px; box-shadow: 0 0 6px var(--success); }
+
+    /* ===========================
+       PROBLEM SECTION
+    =========================== */
+    .section-problem {
+      padding: 100px 0;
+      text-align: center;
+    }
+
+    .section-problem h2 { margin-bottom: 16px; }
+    .section-problem > p { color: var(--text-2); max-width: 580px; margin: 0 auto 56px; font-size: 1.15rem; }
+
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+      text-align: left;
+    }
+
+    .problem-card {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+    }
+
+    .problem-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      color: #FCA5A5;
+    }
+
+    .problem-card h3 { font-size: 1.15rem; margin-bottom: 10px; }
+    .problem-card p { color: var(--text-2); font-size: .98rem; line-height: 1.65; }
+
+    /* ===========================
+       PRODUCT SECTION
+    =========================== */
+    .section-product {
+      padding: 100px 0;
+    }
+
+    .product-header {
+      text-align: center;
+      margin-bottom: 72px;
+    }
+
+    .product-header h2 { margin-bottom: 16px; }
+    .product-header p { color: var(--text-2); max-width: 580px; margin: 0 auto; font-size: 1.15rem; }
+
+    /* Product logo showcase */
+    .product-logo-center {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .product-logo-center img {
+      height: 100px;
+      filter: drop-shadow(0 0 32px rgba(0,180,219,.5));
+    }
+
+    /* ===========================
+       HOW IT WORKS — CLEAN STEPS
+    =========================== */
+    .how-steps { display: flex; flex-direction: column; gap: 72px; }
+
+    .how-step {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 56px;
+      align-items: center;
+    }
+    .how-step.reverse .how-anim { order: -1; }
+
+    .how-step-num {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .how-step-num-circle {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--cyan-dim);
+      border: 1px solid var(--border-cyan);
+      color: var(--cyan);
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700; font-size: .85rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .how-step-num-label {
+      font-size: .7rem; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase; color: var(--cyan);
+    }
+    .how-step-text h3 { font-size: 1.95rem; margin-bottom: 16px; }
+    .how-step-text p  { color: var(--text-2); font-size: 1.05rem; line-height: 1.8; }
+
+    /* Shared anim card */
+    .how-anim {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .how-anim::after {
+      content: '';
+      position: absolute;
+      bottom: -60px; right: -60px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(0,180,219,.1), transparent 70%);
+      pointer-events: none;
+    }
+
+    /* =========================================
+       STEP 1 — KNOWLEDGE UPLOAD
+       A file upload zone where docs appear
+       one by one with a progress bar.
+    ========================================= */
+    .kb-card {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .kb-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+      font-size: .78rem; font-weight: 600; color: var(--text-2);
+    }
+    .kb-header svg { width: 14px; height: 14px; color: var(--cyan); flex-shrink: 0; }
+
+    .kb-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; }
+
+    .kb-file {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: file-appear .4s ease forwards;
+    }
+    .kb-file:nth-child(1) { animation-delay: .3s; }
+    .kb-file:nth-child(2) { animation-delay: 1.1s; }
+    .kb-file:nth-child(3) { animation-delay: 1.9s; }
+    .kb-file:nth-child(4) { animation-delay: 2.7s; }
+
+    @keyframes file-appear {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .kb-file-icon {
+      width: 30px; height: 30px; border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 14px;
+    }
+    .kb-file-info { flex: 1; min-width: 0; }
+    .kb-file-name { font-size: .78rem; font-weight: 600; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kb-file-meta { font-size: .66rem; color: var(--text-3); margin-top: 1px; }
+
+    .kb-file-done {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(110,231,183,.12);
+      border: 1px solid rgba(110,231,183,.3);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--success); flex-shrink: 0;
+      opacity: 0;
+      animation: check-pop .3s ease forwards;
+    }
+    .kb-file:nth-child(1) .kb-file-done { animation-delay: .7s; }
+    .kb-file:nth-child(2) .kb-file-done { animation-delay: 1.5s; }
+    .kb-file:nth-child(3) .kb-file-done { animation-delay: 2.3s; }
+    .kb-file:nth-child(4) .kb-file-done { animation-delay: 3.1s; }
+
+    @keyframes check-pop {
+      0%   { opacity: 0; transform: scale(.5); }
+      70%  { transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .kb-file-done svg { width: 9px; height: 9px; }
+
+    .kb-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: .72rem;
+    }
+    .kb-count { color: var(--text-3); }
+    .kb-status {
+      color: var(--success); font-weight: 600;
+      display: flex; align-items: center; gap: 5px;
+      opacity: 0;
+      animation: fade-in-slow .5s ease forwards;
+      animation-delay: 3.4s;
+    }
+    .kb-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+    @keyframes fade-in-slow {
+      to { opacity: 1; }
+    }
+
+    /* =========================================
+       STEP 2 — CHANNEL CONNECT
+       A clean grid of channel tiles that
+       activate one by one.
+    ========================================= */
+    /* ===========================
+       CHANNEL CARDS (app-style)
+    =========================== */
+    .ch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .ch-card {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px 20px 18px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color .3s, transform .25s, box-shadow .3s;
+      cursor: pointer;
+      opacity: 0;
+      animation: ch-card-in .45s ease forwards;
+    }
+
+    .ch-card:hover { transform: translateY(-3px); box-shadow: 0 20px 48px rgba(0,0,0,.35); }
+
+    @keyframes ch-card-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .ch-card:nth-child(1) { animation-delay: .1s; }
+    .ch-card:nth-child(2) { animation-delay: .25s; }
+    .ch-card:nth-child(3) { animation-delay: .4s; }
+    .ch-card:nth-child(4) { animation-delay: .55s; }
+    .ch-card:nth-child(5) { animation-delay: .7s; }
+    .ch-card:nth-child(6) { animation-delay: .85s; }
+
+    .ch-card[data-ch="whatsapp"]:hover  { border-color: rgba(37,211,102,.4);  box-shadow: 0 20px 48px rgba(37,211,102,.08); }
+    .ch-card[data-ch="telegram"]:hover  { border-color: rgba(40,168,223,.4);  box-shadow: 0 20px 48px rgba(40,168,223,.08); }
+    .ch-card[data-ch="instagram"]:hover { border-color: rgba(225,48,108,.35); box-shadow: 0 20px 48px rgba(225,48,108,.07); }
+    .ch-card[data-ch="messenger"]:hover { border-color: rgba(0,120,255,.35);  box-shadow: 0 20px 48px rgba(0,120,255,.07); }
+    .ch-card[data-ch="webchat"]:hover   { border-color: rgba(0,180,219,.4);   box-shadow: 0 20px 48px rgba(0,180,219,.08); }
+
+    .ch-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
+
+    .ch-icon-lg {
+      width: 62px; height: 62px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .ch-icon-lg img { width: 38px; height: 38px; object-fit: contain; }
+
+    .ch-status {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 99px;
+      font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    }
+    .ch-status--active { background: rgba(37,211,102,.1); color: #25d366; border: 1px solid rgba(37,211,102,.22); }
+    .ch-status--active::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: #25d366; animation: pulse-dot 1.5s ease infinite; flex-shrink: 0;
+    }
+    .ch-status--inactive { color: var(--text-4); }
+    .ch-status--soon     { color: var(--text-4); }
+
+    .ch-card-name { font-family: 'Space Grotesk', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--text-1); margin-bottom: 6px; }
+    .ch-card-desc { font-size: .84rem; color: var(--text-3); line-height: 1.55; flex: 1; }
+    .ch-card-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0 14px; }
+
+    .ch-card-bottom { display: flex; align-items: center; justify-content: space-between; }
+    .ch-icon-stack { display: flex; align-items: center; }
+    .ch-stack-item {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: 2px solid var(--bg-2); overflow: hidden;
+      display: flex; align-items: center; justify-content: center; background: var(--bg-3);
+    }
+    .ch-stack-item + .ch-stack-item { margin-left: -9px; }
+    .ch-stack-item img { width: 18px; height: 18px; object-fit: contain; }
+    .ch-card-arrow { color: var(--text-4); transition: color .2s, transform .2s; display: flex; }
+    .ch-card:hover .ch-card-arrow { color: var(--cyan); transform: translateX(4px); }
+    .ch-card--soon { opacity: .35 !important; pointer-events: none; }
+
+    /* =========================================
+       STEP 3 — LIVE CONVERSATION
+       Clean chat window with messages that
+       type in sequentially, cycling.
+    ========================================= */
+    .live-chat-wrap { display: flex; flex-direction: column; gap: 12px; }
+
+    .live-chat-card {
+      background: var(--bg-main);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .lc-head {
+      background: var(--bg-3);
+      border-bottom: 1px solid var(--border);
+      padding: 11px 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .lc-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(0,180,219,.15);
+      border: 1px solid var(--border-cyan);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+    }
+    .lc-info { flex: 1; }
+    .lc-name { font-size: .78rem; font-weight: 700; color: var(--text-1); }
+    .lc-sub  { font-size: .65rem; color: var(--success); display: flex; align-items: center; gap: 4px; }
+    .lc-sub::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--success); }
+
+    .lc-msgs { padding: 14px; display: flex; flex-direction: column; gap: 8px; min-height: 140px; }
+
+    .lc-msg {
+      max-width: 85%;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: .75rem; line-height: 1.5;
+      opacity: 0; transform: translateY(6px);
+      animation: lc-in .35s ease forwards;
+    }
+    .lc-msg.bot {
+      background: rgba(0,180,219,.1);
+      border: 1px solid rgba(0,180,219,.18);
+      color: var(--text-1);
+      align-self: flex-start;
+      border-bottom-left-radius: 3px;
+    }
+    .lc-msg.user {
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      align-self: flex-end;
+      border-bottom-right-radius: 3px;
+    }
+    @keyframes lc-in {
+      to { opacity:1; transform: translateY(0); }
+    }
+    .lc-msg:nth-child(1) { animation-delay: .5s; }
+    .lc-msg:nth-child(2) { animation-delay: 1.6s; }
+    .lc-msg:nth-child(3) { animation-delay: 2.8s; }
+    .lc-msg:nth-child(4) { animation-delay: 4.0s; }
+
+    .lc-typing {
+      display: flex; gap: 4px; align-items: center;
+      padding: 9px 12px;
+      background: rgba(0,180,219,.06);
+      border: 1px solid rgba(0,180,219,.12);
+      border-radius: 12px; border-bottom-left-radius: 3px;
+      width: fit-content; align-self: flex-start;
+      opacity: 0;
+      animation: typing-cycle 6s ease infinite;
+      animation-delay: 1.1s;
+    }
+    .lc-typing span {
+      width: 5px; height: 5px; border-radius: 50%; background: var(--cyan);
+      animation: blink 1s ease-in-out infinite;
+    }
+    .lc-typing span:nth-child(2) { animation-delay: .18s; }
+    .lc-typing span:nth-child(3) { animation-delay: .36s; }
+    @keyframes blink {
+      0%,80%,100% { opacity: .3; transform: scaleY(.8); }
+      40%          { opacity: 1;  transform: scaleY(1.2); }
+    }
+    @keyframes typing-cycle {
+      0%,12%  { opacity:1; }
+      20%,100%{ opacity:0; }
+    }
+
+    /* bottom stats row */
+    .lc-stats {
+      display: grid; grid-template-columns: repeat(3,1fr);
+      gap: 8px;
+    }
+    .lc-stat {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .lc-stat-val {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.15rem; font-weight: 700; color: var(--text-1);
+    }
+    .lc-stat-lbl { font-size: .62rem; color: var(--text-3); margin-top: 2px; }
+
+    @media (max-width: 900px) {
+      .how-step { grid-template-columns: 1fr; gap: 32px; }
+      .how-step.reverse .how-anim { order: 0; }
+    }
+
+    /* Features grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: rgba(255,255,255,.035);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: all .2s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--border-cyan);
+      background: rgba(255,255,255,.055);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--cyan-dim);
+      border: 1px solid var(--border-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      color: var(--cyan);
+    }
+
+    .feature-icon svg { width: 22px; height: 22px; }
+    .feature-card h3 { margin-bottom: 10px; font-size: 1.2rem; }
+    .feature-card p { color: var(--text-2); font-size: .98rem; line-height: 1.7; }
+
+    /* ===========================
+       TEMPLATES SECTION
+    =========================== */
+    .section-templates {
+      padding: 100px 0;
+      background: linear-gradient(180deg, transparent, rgba(0,180,219,.03) 50%, transparent);
+    }
+
+    .templates-header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .templates-header h2 { margin-bottom: 16px; }
+    .templates-header p { color: var(--text-2); max-width: 520px; margin: 0 auto; }
+
+    .templates-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 18px;
+    }
+
+    .template-card {
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .25s, box-shadow .25s;
+      aspect-ratio: 3/4;
+      border: 1px solid var(--border);
+      background: var(--bg-2);
+    }
+
+    .template-card:hover {
+      transform: translateY(-5px) scale(1.02);
+      box-shadow: 0 20px 50px rgba(0,0,0,.5), 0 0 0 1px var(--border-cyan);
+    }
+
+    .template-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform .4s ease;
+    }
+
+    .template-card:hover img {
+      transform: scale(1.05);
+    }
+
+    /* Fallback gradient when no image */
+    .template-card.no-img {
+      background: linear-gradient(135deg, var(--bg-3), var(--bg-2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .template-card.no-img .template-emoji-big {
+      font-size: 4rem;
+      opacity: .5;
+    }
+
+    .template-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(7,11,18,0) 30%,
+        rgba(7,11,18,.6) 60%,
+        rgba(7,11,18,.96) 100%
+      );
+    }
+
+    .template-text {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 18px 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .template-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(11,15,23,.72);
+      border: 1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: #fff;
+    }
+
+    .template-icon svg { width: 20px; height: 20px; }
+
+    .template-text h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 6px rgba(0,0,0,.5);
+      line-height: 1.2;
+    }
+
+    .template-card.custom-card {
+      border-style: dashed;
+      border-color: var(--border-cyan);
+      background: linear-gradient(135deg, rgba(0,180,219,.06), rgba(7,11,18,.8));
+    }
+
+    .template-card.custom-card .template-text h3 { color: var(--cyan); }
+    .template-card.custom-card .template-icon { border-color: rgba(0,180,219,.4); color: var(--cyan); }
+
+    /* ===========================
+       PRICING / CATÁLOGO
+    =========================== */
+    .section-pricing {
+      padding: 100px 0;
+    }
+
+    .pricing-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .pricing-header h2 { margin-bottom: 16px; }
+    .pricing-header p { color: var(--text-2); max-width: 520px; margin: 0 auto 32px; }
+
+    .billing-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 6px 6px 6px 18px;
+      font-size: .95rem;
+      color: var(--text-2);
+    }
+
+    .toggle-pill {
+      display: flex;
+      background: var(--bg-3);
+      border-radius: 99px;
+      border: 1px solid var(--border);
+    }
+
+    .toggle-pill button {
+      padding: 7px 18px;
+      border-radius: 99px;
+      border: none;
+      background: transparent;
+      color: var(--text-3);
+      font-family: 'Outfit', sans-serif;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .toggle-pill button.active {
+      background: var(--cyan);
+      color: #061018;
+    }
+
+    .save-badge {
+      background: rgba(110,231,183,.12);
+      border: 1px solid rgba(110,231,183,.25);
+      color: var(--success);
+      border-radius: 99px;
+      padding: 4px 10px;
+      font-size: .72rem;
+      font-weight: 700;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      margin-top: 48px;
+      align-items: start;
+    }
+
+    .plan-card {
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      position: relative;
+      transition: border-color .2s;
+    }
+
+    .plan-card.featured {
+      background: linear-gradient(145deg, rgba(0,180,219,.08), rgba(255,255,255,.04));
+      border-color: var(--border-cyan);
+      box-shadow: 0 0 40px rgba(0,180,219,.12);
+    }
+
+    .plan-popular {
+      position: absolute;
+      top: -13px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--cyan);
+      color: #061018;
+      font-size: .7rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 99px;
+      white-space: nowrap;
+    }
+
+    .plan-name { font-family: 'Space Grotesk', sans-serif; font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; }
+    .plan-desc { font-size: .95rem; color: var(--text-3); margin-bottom: 26px; }
+
+    .plan-price {
+      margin-bottom: 8px;
+    }
+
+    .plan-currency { font-size: .85rem; color: var(--text-2); vertical-align: top; line-height: 2.2; }
+    .plan-amount {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3.2rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .plan-period { font-size: .9rem; color: var(--text-3); margin-bottom: 6px; }
+    .plan-annual-note { font-size: .75rem; color: var(--text-3); margin-bottom: 24px; min-height: 18px; }
+
+    .plan-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
+
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+
+    .plan-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: .98rem;
+      color: var(--text-2);
+    }
+
+    .check-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(110,231,183,.12);
+      border: 1px solid rgba(110,231,183,.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+      color: var(--success);
+    }
+
+    .check-icon svg { width: 10px; height: 10px; }
+
+    .plan-cta { display: block; width: 100%; text-align: center; }
+
+    .plan-limit {
+      font-size: .72rem;
+      color: var(--text-3);
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    .plan-enterprise .plan-amount { font-size: 1.8rem; }
+
+    /* ===========================
+       STATS SECTION
+    =========================== */
+    .section-stats {
+      padding: 80px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 40px;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--cyan);
+      margin-bottom: 6px;
+    }
+
+    .stat-label { font-size: 1rem; color: var(--text-2); }
+
+    @media (max-width: 768px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 28px; }
+    }
+
+    /* ===========================
+       FINAL CTA
+    =========================== */
+    .section-cta {
+      padding: 120px 0;
+      text-align: center;
+    }
+
+    .cta-box {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 64px 48px;
+      background: linear-gradient(135deg, rgba(0,180,219,.08), rgba(255,255,255,.03));
+      border: 1px solid var(--border-cyan);
+      border-radius: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-box::before {
+      content: '';
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      height: 200px;
+      background: radial-gradient(ellipse, rgba(0,180,219,.2) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-box h2 { margin-bottom: 16px; }
+    .cta-box p { color: var(--text-2); margin-bottom: 36px; font-size: 1.18rem; }
+    .cta-buttons { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+    /* ===========================
+       FOOTER
+    =========================== */
+    footer {
+      padding: 56px 0 36px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-top {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 48px;
+      margin-bottom: 48px;
+    }
+
+    .footer-brand img { height: 28px; margin-bottom: 16px; }
+    .footer-brand p { color: var(--text-3); font-size: .95rem; line-height: 1.72; max-width: 300px; }
+
+    .footer-tagline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+      font-size: .78rem;
+      color: var(--text-4);
+    }
+
+    .footer-tagline img { height: 16px; opacity: .5; }
+
+    .footer-col h4 {
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: 16px;
+    }
+
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-col a { font-size: .98rem; color: var(--text-3); transition: color .15s; }
+    .footer-col a:hover { color: var(--text-1); }
+
+    .footer-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-bottom p { font-size: .88rem; color: var(--text-4); }
+
+    .footer-socials { display: flex; align-items: center; gap: 12px; }
+    .footer-socials a {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-3);
+      transition: all .15s;
+    }
+    .footer-socials a:hover { border-color: var(--border-cyan); color: var(--cyan); }
+    .footer-socials svg { width: 15px; height: 15px; }
+
+    @media (max-width: 860px) {
+      .footer-top { grid-template-columns: 1fr 1fr; }
+      .footer-brand { grid-column: 1/-1; }
+    }
+
+    @media (max-width: 540px) {
+      .footer-top { grid-template-columns: 1fr; }
+    }
+
+    /* ===========================
+       MOBILE MENU
+    =========================== */
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(7,11,18,.97);
+      backdrop-filter: blur(20px);
+      z-index: 200;
+      padding: 80px 24px 40px;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mobile-menu.open { display: flex; }
+
+    .mobile-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .mobile-menu a {
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: var(--text-2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ===========================
+       LANG HIDDEN
+    =========================== */
+    [data-en] { display: inherit; }
+    html[data-lang="es"] [data-en]:not([data-es]) { display: none; }
+
+    /* Hide/show bilingual elements */
+    .es { display: block; }
+    .en { display: none; }
+    html[data-lang="en"] .es { display: none; }
+    html[data-lang="en"] .en { display: block; }
+
+    /* For inline elements */
+    span.es { display: inline; }
+    span.en { display: none; }
+    html[data-lang="en"] span.es { display: none; }
+    html[data-lang="en"] span.en { display: inline; }
+
+    /* ===========================
+       SCROLL ANIMATIONS
+    =========================== */
+    /* fade-up: visible by default; JS adds .js-ready to body to enable animations */
+    .fade-up {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity .5s ease, transform .5s ease;
+    }
+    body.js-ready .fade-up {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    body.js-ready .fade-up.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+  
+    /* ===========================
+       BENTO HIGHLIGHT CARDS
+    =========================== */
+    .section-bento { padding: 40px 0 100px; }
+
+    .bento-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .bento-left { display: flex; flex-direction: column; gap: 24px; }
+    .bento-right { display: flex; }
+
+    .bento-card {
+      border-radius: 20px;
+      padding: 48px;
+      position: relative;
+      overflow: hidden;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bento-card--cyan {
+      background: var(--cyan);
+      color: #061018;
+    }
+
+    /* Cyan card inner: text left, icon right, vertically centered */
+    .bento-cyan-inner {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      height: 100%;
+      flex: 1;
+    }
+
+    .bento-cyan-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bento-card--cyan .bento-title,
+    .bento-card--cyan .bento-desc { max-width: 100%; }
+
+    .bento-card--dark {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+    }
+
+    .bento-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: rgba(0,0,0,.15);
+      border-radius: 99px;
+      font-size: .88rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .bento-badge--cyan {
+      background: rgba(0,180,219,.12);
+      color: var(--cyan);
+      border: 1px solid rgba(0,180,219,.2);
+      font-size: .88rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: inline-flex;
+      padding: 4px 10px;
+      border-radius: 99px;
+    }
+
+    .bento-title {
+      font-size: 2.1rem;
+      font-weight: 700;
+      line-height: 1.18;
+      margin-bottom: 18px;
+    }
+
+    .bento-card--dark .bento-title { font-size: 1.5rem; }
+
+    .bento-desc {
+      font-size: 1.05rem;
+      line-height: 1.78;
+      margin-bottom: 32px;
+      max-width: 360px;
+    }
+
+    .bento-card--dark .bento-desc { color: var(--text-2); margin-bottom: 24px; max-width: 100%; }
+
+    .bento-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 22px;
+      border: 2px solid rgba(0,0,0,.35);
+      border-radius: 8px;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      color: #061018;
+      transition: all .2s;
+    }
+
+    .bento-btn:hover { background: rgba(0,0,0,.1); }
+
+    .bento-icon-circle {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: rgba(0,0,0,.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .bento-icon-circle svg { opacity: .6; }
+
+    .bento-stat {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .bento-stat-num {
+      font-size: 3rem;
+      font-weight: 800;
+      color: var(--cyan);
+      line-height: 1;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .bento-stat-label {
+      font-size: .78rem;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    /* Footer logo upgrades */
+    .footer-brand > img {
+      height: 120px !important;
+      display: block;
+      margin-bottom: 32px;
+      max-width: 380px;
+      width: auto;
+    }
+
+    .footer-tagline {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 28px;
+      font-size: .9rem;
+      color: var(--text-3);
+    }
+
+    .footer-tagline img {
+      height: 64px !important;
+      opacity: .95 !important;
+      display: inline-block;
+      max-width: 280px;
+      width: auto;
+      vertical-align: middle;
+    }
+
+    .footer-brand {
+      max-width: 440px;
+    }
+
+    .footer-brand p {
+      font-size: .9rem;
+      line-height: 1.75;
+      color: var(--text-2);
+    }
+
+    @media (max-width: 768px) {
+      .bento-grid { grid-template-columns: 1fr; }
+      .bento-left { order: 2; }
+      .bento-right { order: 1; }
+    }
+
+    
+    /* ===========================
+       BEFORE / AFTER
+    =========================== */
+    .section-compare { padding: 100px 0; background: var(--bg-main); }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 56px;
+    }
+
+    .compare-card {
+      border-radius: 20px;
+      padding: 40px;
+    }
+
+    .compare-card--before {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+
+    .compare-card--after {
+      background: linear-gradient(135deg, rgba(0,180,219,.08) 0%, rgba(0,180,219,.03) 100%);
+      border: 1px solid rgba(0,180,219,.22);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .compare-card--after::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    }
+
+    .compare-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-size: .92rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .compare-label--before {
+      background: rgba(255,255,255,.06);
+      color: var(--text-3);
+    }
+
+    .compare-label--after {
+      background: rgba(0,180,219,.12);
+      color: var(--cyan);
+      border: 1px solid rgba(0,180,219,.2);
+    }
+
+    .compare-card h3 {
+      font-size: 1.2rem;
+      margin-bottom: 28px;
+      color: var(--text-1);
+    }
+
+    .compare-list { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+
+    .compare-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 1.06rem;
+      line-height: 1.55;
+    }
+
+    .compare-card--before .compare-list li { color: var(--text-3); }
+    .compare-card--after .compare-list li { color: var(--text-2); }
+
+    .compare-list li::before {
+      content: '';
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 2px;
+      background-size: 12px;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .compare-card--before .compare-list li::before {
+      background-color: rgba(255,100,100,.12);
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%23ff6464' stroke-width='3' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='18' y1='6' x2='6' y2='18'/%3E%3Cline x1='6' y1='6' x2='18' y2='18'/%3E%3C/svg%3E");
+    }
+
+    .compare-card--after .compare-list li::before {
+      background-color: rgba(0,180,219,.15);
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%2300B4DB' stroke-width='3' xmlns='http://www.w3.org/2000/svg'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+    }
+
+    /* ===========================
+       TESTIMONIALS
+    =========================== */
+    .section-testimonials { padding: 100px 0; }
+
+    .testimonials-track-wrap {
+      overflow: hidden;
+      margin-top: 56px;
+      -webkit-mask: linear-gradient(90deg, transparent, #fff 8%, #fff 92%, transparent);
+      mask: linear-gradient(90deg, transparent, #fff 8%, #fff 92%, transparent);
+    }
+
+    .testimonials-track {
+      display: flex;
+      gap: 20px;
+      animation: scroll-left 40s linear infinite;
+      width: max-content;
+    }
+
+    .testimonials-track:hover { animation-play-state: paused; }
+
+    @keyframes scroll-left {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    .testi-card {
+      width: 320px;
+      flex-shrink: 0;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+    }
+
+    .testi-stars {
+      color: #FFB800;
+      font-size: 1rem;
+      letter-spacing: 2px;
+      margin-bottom: 14px;
+    }
+
+    .testi-quote {
+      font-size: 1.02rem;
+      line-height: 1.72;
+      color: var(--text-2);
+      margin-bottom: 20px;
+    }
+
+    .testi-author {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .testi-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      color: #061018;
+    }
+
+    .testi-name { font-size: .98rem; font-weight: 600; color: var(--text-1); }
+    .testi-biz { font-size: .78rem; color: var(--text-3); margin-top: 2px; }
+
+    @media (max-width: 768px) {
+      .compare-grid { grid-template-columns: 1fr; }
+    }
+
+    
+    /* ===========================
+       HERO TWO-COLUMN
+    =========================== */
+    .hero-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 72px;
+      align-items: center;
+    }
+
+    .hero-text { display: flex; flex-direction: column; }
+
+    .hero-trust {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 28px;
+      font-size: .8rem;
+      color: var(--text-3);
+    }
+
+    .hero-trust-avatars {
+      display: flex;
+    }
+
+    .hero-trust-avatars span {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--bg-main);
+      margin-left: -8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .7rem;
+      font-weight: 700;
+      color: #061018;
+    }
+
+    .hero-trust-avatars span:first-child { margin-left: 0; }
+
+    /* ===========================
+       TYPEWRITER
+    =========================== */
+    .type-word {
+      color: var(--cyan);
+      display: inline-block;
+      min-width: 5.5em;       /* reserves space for longest word (Messenger) */
+      white-space: nowrap;
+      vertical-align: bottom; /* prevents baseline jump */
+      position: relative;
+    }
+
+    /* cursor is absolute so it never shifts layout */
+    .type-word::after {
+      content: '|';
+      position: absolute;
+      right: 0;
+      animation: blink .7s step-end infinite;
+      color: var(--cyan);
+      font-weight: 300;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    /* ===========================
+       LIVE CHAT WIDGET
+    =========================== */
+    .live-chat-wrap {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .live-chat-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      background: rgba(0,180,219,.1);
+      border: 1px solid rgba(0,180,219,.2);
+      border-radius: 99px;
+      font-size: .88rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      color: var(--cyan);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+    }
+
+    .live-chat-label::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      animation: pulse-dot 1.5s ease infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .4; transform: scale(.7); }
+    }
+
+    .live-chat-phone {
+      width: 100%;
+      max-width: 380px;
+      background: #1a1a1a;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 32px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
+    }
+
+    .lcp-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: #075e54;
+    }
+
+    .lcp-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .lcp-name { font-size: .9rem; font-weight: 600; color: #fff; }
+
+    .lcp-status {
+      font-size: .72rem;
+      color: rgba(255,255,255,.75);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .lcp-status::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #4CAF50;
+      display: inline-block;
+    }
+
+    .lcp-skylab-badge {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(0,0,0,.25);
+      padding: 4px 9px;
+      border-radius: 99px;
+      font-size: .65rem;
+      font-weight: 700;
+      color: rgba(255,255,255,.85);
+      letter-spacing: .05em;
+    }
+
+    .lcp-skylab-badge img {
+      height: 14px;
+      width: auto;
+      filter: brightness(2);
+    }
+
+    .lcp-messages {
+      background: #0b1418;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' opacity='.03'%3E%3Ccircle cx='30' cy='30' r='20' fill='none' stroke='white' stroke-width='1'/%3E%3C/svg%3E");
+      min-height: 280px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scroll-behavior: smooth;
+    }
+
+    .lcp-messages::-webkit-scrollbar { display: none; }
+
+    .chat-msg {
+      max-width: 80%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: .82rem;
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: msg-in .3s ease forwards;
+      word-break: break-word;
+    }
+
+    @keyframes msg-in {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-msg.user {
+      align-self: flex-end;
+      background: #005c4b;
+      color: #e9edef;
+      border-bottom-right-radius: 2px;
+    }
+
+    .chat-msg.bot {
+      align-self: flex-start;
+      background: #202c33;
+      color: #e9edef;
+      border-bottom-left-radius: 2px;
+    }
+
+    .chat-msg .msg-time {
+      font-size: .62rem;
+      color: rgba(255,255,255,.4);
+      text-align: right;
+      margin-top: 3px;
+    }
+
+    .typing-indicator {
+      align-self: flex-start;
+      background: #202c33;
+      border-radius: 8px;
+      border-bottom-left-radius: 2px;
+      padding: 10px 14px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      opacity: 0;
+      animation: msg-in .2s ease forwards;
+    }
+
+    .typing-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.4);
+      animation: bounce-dot 1.2s ease infinite;
+    }
+
+    .typing-dot:nth-child(2) { animation-delay: .2s; }
+    .typing-dot:nth-child(3) { animation-delay: .4s; }
+
+    @keyframes bounce-dot {
+      0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    .lcp-input {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #202c33;
+      border-top: 1px solid rgba(255,255,255,.05);
+    }
+
+    .lcp-input-field {
+      flex: 1;
+      background: #2a3942;
+      border-radius: 99px;
+      padding: 7px 14px;
+      font-size: .8rem;
+      color: rgba(255,255,255,.3);
+    }
+
+    .lcp-input svg { color: rgba(255,255,255,.3); flex-shrink: 0; }
+
+    @media (max-width: 900px) {
+      .hero-cols { grid-template-columns: 1fr; gap: 48px; }
+      .hero { text-align: center; }
+      .hero p { max-width: 100%; }
+      .hero-ctas { justify-content: center; }
+      .hero-trust { justify-content: center; }
+      .live-chat-phone { max-width: 340px; margin: 0 auto; }
+    }
+
+    
+    /* ===========================
+       DEMO CAROUSEL / BANNER
+    =========================== */
+    .section-demos {
+      padding: 100px 0;
+      overflow: hidden;
+    }
+
+    .demos-header {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .carousel-wrap {
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,.45);
+    }
+
+    .carousel-track {
+      display: flex;
+      transition: transform 1s cubic-bezier(.4,0,.2,1);
+      will-change: transform;
+    }
+
+    .carousel-slide {
+      min-width: 100%;
+      position: relative;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+    }
+
+    .carousel-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    /* gradient overlay at bottom for caption */
+    .carousel-slide::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top,
+        rgba(6,16,24,.85) 0%,
+        rgba(6,16,24,.15) 40%,
+        transparent 65%);
+      pointer-events: none;
+    }
+
+    .slide-caption {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 32px 40px;
+      z-index: 2;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .slide-caption-text {}
+
+    .slide-industry {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: rgba(0,180,219,.2);
+      border: 1px solid rgba(0,180,219,.35);
+      border-radius: 99px;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 10px;
+    }
+
+    .slide-caption h3 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 6px;
+      line-height: 1.2;
+    }
+
+    .slide-caption p {
+      font-size: .95rem;
+      color: rgba(255,255,255,.7);
+      margin: 0;
+    }
+
+    .slide-stat {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .slide-stat-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--cyan);
+      line-height: 1;
+      display: block;
+    }
+
+    .slide-stat-lbl {
+      font-size: .78rem;
+      color: rgba(255,255,255,.6);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    /* Prev / Next arrows */
+    .carousel-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(6,16,24,.7);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all .2s;
+      color: #fff;
+    }
+
+    .carousel-btn:hover {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #061018;
+    }
+
+    .carousel-btn--prev { left: 20px; }
+    .carousel-btn--next { right: 20px; }
+
+    /* Dots */
+    .carousel-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    .carousel-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 99px;
+      background: rgba(255,255,255,.2);
+      cursor: pointer;
+      transition: all .3s;
+      border: none;
+      padding: 0;
+    }
+
+    .carousel-dot.active {
+      background: var(--cyan);
+      width: 28px;
+    }
+
+    /* Progress bar at top of carousel */
+    .carousel-progress {
+      position: absolute;
+      top: 0; left: 0;
+      height: 3px;
+      background: var(--cyan);
+      z-index: 10;
+      width: 0%;
+      transition: width linear;
+    }
+
+    </style>
+</head>
+<body>
+
+
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <button class="mobile-close" onclick="closeMobileMenu()">✕</button>
+  <a href="#features" onclick="closeMobileMenu()"><span class="es">Características</span><span class="en">Features</span></a>
+  <a href="#how" onclick="closeMobileMenu()"><span class="es">Cómo funciona</span><span class="en">How it works</span></a>
+  <a href="#templates" onclick="closeMobileMenu()"><span class="es">Plantillas</span><span class="en">Templates</span></a>
+  <a href="#pricing" onclick="closeMobileMenu()"><span class="es">Precios</span><span class="en">Pricing</span></a>
+  <div style="margin-top:16px; display:flex; flex-direction:column; gap:10px;">
+    <a href="#" class="btn btn-secondary" style="justify-content:center;"><span class="es">Iniciar sesión</span><span class="en">Log in</span></a>
+    <a href="#pricing" class="btn btn-primary" style="justify-content:center;" onclick="closeMobileMenu()"><span class="es">Crear asistente</span><span class="en">Get started</span></a>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="container nav-inner">
+    <div class="nav-logo">
+      <a href="#"><img src="brand-kit/skylab-horizontal-transparent.png" alt="Skylab Human Bot" /></a>
+    </div>
+
+    <ul class="nav-links">
+      <li><a href="#features"><span class="es">Características</span><span class="en">Features</span></a></li>
+      <li><a href="#how"><span class="es">Cómo funciona</span><span class="en">How it works</span></a></li>
+      <li><a href="#templates"><span class="es">Plantillas</span><span class="en">Templates</span></a></li>
+      <li><a href="#pricing"><span class="es">Precios</span><span class="en">Pricing</span></a></li>
+    </ul>
+
+    <div class="nav-right">
+      <div class="lang-toggle">
+        <button id="btnEs" class="active" onclick="setLang('es')">ES</button>
+        <button id="btnEn" onclick="setLang('en')">EN</button>
+      </div>
+      <a href="#" class="btn btn-secondary" style="padding:9px 16px; font-size:.85rem;">
+        <span class="es">Iniciar sesión</span><span class="en">Log in</span>
+      </a>
+      <a href="#pricing" class="btn btn-primary" style="padding:9px 18px; font-size:.85rem;">
+        <span class="es">Crear asistente</span><span class="en">Get started</span>
+      </a>
+      <button class="nav-hamburger" onclick="openMobileMenu()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- ===========================
+     HERO
+=========================== -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="container">
+    <div class="hero-cols">
+
+      <!-- LEFT: Text -->
+      <div class="hero-text fade-up">
+        <div class="badge" style="align-self:flex-start; margin-bottom:28px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span class="es">Plataforma de IA Conversacional · 24/7</span>
+          <span class="en">Conversational AI Platform · 24/7</span>
+        </div>
+
+        <h1>
+          <span class="es">Tu negocio atendiendo<br>clientes en <span class="type-word" id="typeWord">WhatsApp</span></span>
+          <span class="en">Your business serving<br>customers on <span class="type-word" id="typeWordEn">WhatsApp</span></span>
+        </h1>
+
+        <p style="margin-top:16px;">
+          <span class="es">Crea asistentes con IA que entienden tu negocio, responden al instante y convierten conversaciones en ventas — sin código, sin esfuerzo.</span>
+          <span class="en">Build AI assistants that understand your business, respond instantly and turn conversations into sales — no code, no effort.</span>
+        </p>
+
+        <div class="hero-ctas">
+          <a href="#pricing" class="btn btn-primary btn-lg">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            <span class="es">Crear asistente gratis</span>
+            <span class="en">Create assistant free</span>
+          </a>
+          <a href="#how" class="btn btn-secondary btn-lg">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span class="es">Ver cómo funciona</span>
+            <span class="en">See how it works</span>
+          </a>
+        </div>
+
+        <div class="hero-trust">
+          <div class="hero-trust-avatars">
+            <span style="background:#00B4DB;">CM</span>
+            <span style="background:#A78BFA;">LP</span>
+            <span style="background:#34D399;">AR</span>
+            <span style="background:#F59E0B;">MV</span>
+            <span style="background:#EC4899;">+</span>
+          </div>
+          <span class="es">Más de <strong style="color:var(--text-1);">1,000 negocios</strong> ya usan Skylab</span>
+          <span class="en">More than <strong style="color:var(--text-1);">1,000 businesses</strong> already use Skylab</span>
+        </div>
+      </div>
+
+      <!-- RIGHT: Animated Live Chat -->
+      <div class="live-chat-wrap fade-up">
+        <div class="live-chat-label">EN VIVO · DEMO EN TIEMPO REAL</div>
+        <div class="live-chat-phone">
+          <div class="lcp-header">
+            <div class="lcp-avatar">🍕</div>
+            <div>
+              <div class="lcp-name">La Piazza Restaurante</div>
+              <div class="lcp-status">en línea</div>
+            </div>
+            <div class="lcp-skylab-badge">
+              <img src="brand-kit/skylab-symbol-transparent.png" alt="Skylab" />
+              Skylab AI
+            </div>
+          </div>
+          <div class="lcp-messages" id="lcpMessages"></div>
+          <div class="lcp-input">
+            <div class="lcp-input-field">Escribe un mensaje...</div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.hero-cols -->
+
+    <!-- Product Mockup -->
+    <div class="hero-mockup">
+      <div class="mockup-browser">
+        <div class="mockup-bar">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+          <div class="mockup-url">app.skylab.synergiaautomation.com/dashboard</div>
+        </div>
+        <div class="mockup-content">
+          <!-- Sidebar -->
+          <div class="mockup-sidebar">
+            <div class="sidebar-logo">
+              <img src="brand-kit/skylab-symbol-transparent.png" alt="Skylab" />
+              <span style="font-size:.8rem; font-weight:600; color:var(--text-2);">Skylab</span>
+            </div>
+            <div class="sidebar-item active">
+              <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              Dashboard
+            </div>
+            <div class="sidebar-item">
+              <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span class="es">Conversaciones</span><span class="en">Conversations</span>
+            </div>
+            <div class="sidebar-item">
+              <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+              <span class="es">Asistentes</span><span class="en">Assistants</span>
+            </div>
+            <div class="sidebar-item">
+              <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span class="es">Analítica</span><span class="en">Analytics</span>
+            </div>
+            <div class="sidebar-item">
+              <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+              <span class="es">Canales</span><span class="en">Channels</span>
+            </div>
+            <div class="sidebar-item" style="margin-top:auto;">
+              <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+              <span class="es">Configuración</span><span class="en">Settings</span>
+            </div>
+          </div>
+
+          <!-- Main -->
+          <div class="mockup-main">
+            <div class="mockup-header">
+              <span class="mockup-title"><span class="es">Panel de control</span><span class="en">Dashboard</span></span>
+              <span class="mockup-btn-sm">+ <span class="es">Nuevo asistente</span><span class="en">New assistant</span></span>
+            </div>
+
+            <div class="metrics-row">
+              <div class="metric-card">
+                <div class="metric-label"><span class="es">Conversaciones hoy</span><span class="en">Conversations today</span></div>
+                <div class="metric-val">1,248</div>
+                <div class="metric-change">↑ 14.3%</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label"><span class="es">Tasa de resolución</span><span class="en">Resolution rate</span></div>
+                <div class="metric-val">94.2%</div>
+                <div class="metric-change">↑ 2.1%</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label"><span class="es">Tiempo respuesta</span><span class="en">Avg response time</span></div>
+                <div class="metric-val">1.4s</div>
+                <div class="metric-change"><span class="es">Óptimo</span><span class="en">Optimal</span></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label"><span class="es">Satisfacción</span><span class="en">Satisfaction</span></div>
+                <div class="metric-val">4.8★</div>
+                <div class="metric-change">↑ 0.3</div>
+              </div>
+            </div>
+
+            <div class="mockup-bots">
+              <div class="bot-row" style="background:rgba(255,255,255,.02); border-color:rgba(255,255,255,.05); font-size:.7rem; color:var(--text-4); font-weight:600; letter-spacing:.06em; text-transform:uppercase;">
+                <span></span>
+                <span><span class="es">Asistente</span><span class="en">Assistant</span></span>
+                <span style="text-align:right;"><span class="es">Convos</span><span class="en">Convos</span></span>
+                <span style="text-align:right;"><span class="es">Satisf.</span><span class="en">Satisf.</span></span>
+                <span style="text-align:right;"><span class="es">Estado</span><span class="en">Status</span></span>
+              </div>
+              <div class="bot-row">
+                <div class="bot-icon" style="background:rgba(52,211,153,.1);">🍕</div>
+                <div>
+                  <div class="bot-name">La Piazza</div>
+                  <div class="bot-channel">WhatsApp</div>
+                </div>
+                <div class="bot-convo">486</div>
+                <div class="bot-sat">4.9★</div>
+                <div><span class="status-dot"></span></div>
+              </div>
+              <div class="bot-row">
+                <div class="bot-icon" style="background:rgba(96,165,250,.1);">✂️</div>
+                <div>
+                  <div class="bot-name">StyleCut Pro</div>
+                  <div class="bot-channel">WhatsApp + Telegram</div>
+                </div>
+                <div class="bot-convo">312</div>
+                <div class="bot-sat">4.7★</div>
+                <div><span class="status-dot"></span></div>
+              </div>
+              <div class="bot-row">
+                <div class="bot-icon" style="background:rgba(251,146,60,.1);">🏥</div>
+                <div>
+                  <div class="bot-name">Clínica Vital</div>
+                  <div class="bot-channel">WhatsApp</div>
+                </div>
+                <div class="bot-convo">274</div>
+                <div class="bot-sat">4.8★</div>
+                <div><span class="status-dot"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===========================
+     STATS
+=========================== -->
+<section class="section-stats">
+  <div class="container">
+    <div class="stats-grid fade-up">
+      <div>
+        <div class="stat-val">24/7</div>
+        <div class="stat-label"><span class="es">Disponibilidad garantizada</span><span class="en">Guaranteed uptime</span></div>
+      </div>
+      <div>
+        <div class="stat-val">&lt;2s</div>
+        <div class="stat-label"><span class="es">Tiempo de respuesta promedio</span><span class="en">Average response time</span></div>
+      </div>
+      <div>
+        <div class="stat-val">+94%</div>
+        <div class="stat-label"><span class="es">Tasa de resolución sin humano</span><span class="en">Resolution without human</span></div>
+      </div>
+      <div>
+        <div class="stat-val">∞</div>
+        <div class="stat-label"><span class="es">Conversaciones simultáneas</span><span class="en">Simultaneous conversations</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===========================
+     TESTIMONIALS
+=========================== -->
+<section class="section-testimonials">
+  <div class="container">
+    <div style="text-align:center;">
+      <span class="section-label"><span class="es">Clientes que confían en nosotros</span><span class="en">Clients who trust us</span></span>
+      <h2 class="fade-up">
+        <span class="es">Negocios que ya <span class="gradient-text">crecen con Skylab</span></span>
+        <span class="en">Businesses already <span class="gradient-text">growing with Skylab</span></span>
+      </h2>
+    </div>
+  </div>
+
+  <div class="testimonials-track-wrap">
+    <div class="testimonials-track">
+      <!-- Cards duplicated for infinite scroll effect -->
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"Antes respondíamos WhatsApp manualmente todo el día. Ahora Skylab atiende el 80% de los mensajes solo y nuestras ventas subieron un 35% en el primer mes."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:var(--cyan);">CM</div>
+          <div><div class="testi-name">Carlos M.</div><div class="testi-biz">Restaurante La Brasa — Bogotá</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"Nuestros clientes preguntan disponibilidad y precios a las 11pm. Con Skylab responden al instante y cierran la cita sin que tengamos que hacer nada."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#A78BFA;">LP</div>
+          <div><div class="testi-name">Laura P.</div><div class="testi-biz">Clínica Dental Sonrisa — Medellín</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"Implementamos Skylab en 2 horas. El mismo día ya estaba respondiendo preguntas sobre precios, disponibilidad y estado de pedidos. Increíble."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#34D399;">AR</div>
+          <div><div class="testi-name">Andrés R.</div><div class="testi-biz">E-commerce Moda Urbana — Cali</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"Lo que más me sorprendió es que los clientes no sienten que están hablando con un bot. El tono es natural y resuelve las dudas perfectamente."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#F59E0B;">MV</div>
+          <div><div class="testi-name">Marcela V.</div><div class="testi-biz">Academia de Idiomas — Barranquilla</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"Skylab maneja las consultas de 3 propiedades simultáneamente. Agenda visitas, responde preguntas técnicas y filtra leads. Es como tener 3 asistentes extra."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#EC4899;">JH</div>
+          <div><div class="testi-name">Jorge H.</div><div class="testi-biz">Inmobiliaria Horizonte — Bucaramanga</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"El ROI fue inmediato. Dejamos de perder clientes que preguntaban fuera de horario. Solo en el primer mes recuperamos 4x el valor del plan."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#FB923C;">DT</div>
+          <div><div class="testi-name">Diana T.</div><div class="testi-biz">Barbería Style Pro — Bogotá</div></div>
+        </div>
+      </div>
+      <!-- Duplicate for infinite scroll -->
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"Antes respondíamos WhatsApp manualmente todo el día. Ahora Skylab atiende el 80% de los mensajes solo y nuestras ventas subieron un 35% en el primer mes."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:var(--cyan);">CM</div>
+          <div><div class="testi-name">Carlos M.</div><div class="testi-biz">Restaurante La Brasa — Bogotá</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"Nuestros clientes preguntan disponibilidad y precios a las 11pm. Con Skylab responden al instante y cierran la cita sin que tengamos que hacer nada."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#A78BFA;">LP</div>
+          <div><div class="testi-name">Laura P.</div><div class="testi-biz">Clínica Dental Sonrisa — Medellín</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"Implementamos Skylab en 2 horas. El mismo día ya estaba respondiendo preguntas sobre precios, disponibilidad y estado de pedidos. Increíble."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#34D399;">AR</div>
+          <div><div class="testi-name">Andrés R.</div><div class="testi-biz">E-commerce Moda Urbana — Cali</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"Lo que más me sorprendió es que los clientes no sienten que están hablando con un bot. El tono es natural y resuelve las dudas perfectamente."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#F59E0B;">MV</div>
+          <div><div class="testi-name">Marcela V.</div><div class="testi-biz">Academia de Idiomas — Barranquilla</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"Skylab maneja las consultas de 3 propiedades simultáneamente. Agenda visitas, responde preguntas técnicas y filtra leads. Es como tener 3 asistentes extra."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#EC4899;">JH</div>
+          <div><div class="testi-name">Jorge H.</div><div class="testi-biz">Inmobiliaria Horizonte — Bucaramanga</div></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <div class="testi-stars">★★★★★</div>
+        <p class="testi-quote">"El ROI fue inmediato. Dejamos de perder clientes que preguntaban fuera de horario. Solo en el primer mes recuperamos 4x el valor del plan."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:#FB923C;">DT</div>
+          <div><div class="testi-name">Diana T.</div><div class="testi-biz">Barbería Style Pro — Bogotá</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===========================
+     PROBLEM SECTION
+=========================== -->
+<section class="section-problem" id="problem">
+  <div class="container">
+    <span class="section-label"><span class="es">El problema</span><span class="en">The problem</span></span>
+    <h2 class="fade-up">
+      <span class="es">Los chatbots tradicionales <span class="gradient-text">no funcionan</span></span>
+      <span class="en">Traditional chatbots <span class="gradient-text">don't work</span></span>
+    </h2>
+    <p class="fade-up">
+      <span class="es">La mayoría de bots son flujos rígidos que frustran clientes. Skylab es diferente.</span>
+      <span class="en">Most bots are rigid flows that frustrate customers. Skylab is different.</span>
+    </p>
+
+    <div class="problem-grid">
+      <div class="problem-card fade-up">
+        <div class="problem-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <h3><span class="es">Respuestas robóticas</span><span class="en">Robotic responses</span></h3>
+        <p><span class="es">Los bots de árbol de decisión no entienden el contexto ni las emociones. Los clientes lo notan y se frustran.</span><span class="en">Decision-tree bots don't understand context or emotions. Customers notice and get frustrated.</span></p>
+      </div>
+      <div class="problem-card fade-up">
+        <div class="problem-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <h3><span class="es">Sin conocimiento de tu negocio</span><span class="en">No business knowledge</span></h3>
+        <p><span class="es">Configurar menús interminables lleva horas. Cualquier cambio en precios o servicios requiere rehacer todo.</span><span class="en">Setting up endless menus takes hours. Any change in prices or services requires rebuilding everything.</span></p>
+      </div>
+      <div class="problem-card fade-up">
+        <div class="problem-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <h3><span class="es">Un solo canal</span><span class="en">Single channel</span></h3>
+        <p><span class="es">Tus clientes están en WhatsApp, Telegram, Instagram y más. Los bots tradicionales solo cubren uno.</span><span class="en">Your customers are on WhatsApp, Telegram, Instagram and more. Traditional bots only cover one.</span></p>
+      </div>
+      <div class="problem-card fade-up">
+        <div class="problem-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <h3><span class="es">Sin analítica real</span><span class="en">No real analytics</span></h3>
+        <p><span class="es">No sabes qué pregunta más la gente, cuándo abandonan ni qué tan satisfechos quedan tus clientes.</span><span class="en">You don't know what people ask most, when they drop off, or how satisfied your customers are.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===========================
+     HOW IT WORKS
+=========================== -->
+<section class="section-product" id="how">
+  <div class="container">
+    <div class="product-header">
+      <span class="section-label"><span class="es">Cómo funciona</span><span class="en">How it works</span></span>
+      <div class="product-logo-center">
+        <img src="brand-kit/skylab-horizontal-transparent.png" alt="Skylab Human Bot" />
+      </div>
+      <h2 class="fade-up">
+        <span class="es">Asistentes que <span class="gradient-text">entienden</span> y <span class="gradient-text">conectan</span> con tus clientes</span>
+        <span class="en">Assistants that <span class="gradient-text">understand</span> and <span class="gradient-text">connect</span> with your customers</span>
+      </h2>
+      <p class="fade-up">
+        <span class="es">Skylab combina IA generativa con el conocimiento profundo de tu negocio para crear conversaciones que se sienten humanas.</span>
+        <span class="en">Skylab combines generative AI with deep knowledge of your business to create conversations that feel human.</span>
+      </p>
+    </div>
+
+    <div class="how-steps">
+
+      <!-- ── STEP 1: Train ── -->
+      <div class="how-step fade-up">
+        <div class="how-step-text">
+          <div class="how-step-num">
+            <span class="how-step-num-circle">1</span>
+            <span class="how-step-num-label"><span class="es">Entrena</span><span class="en">Train</span></span>
+          </div>
+          <h3><span class="es">Dale a tu asistente el conocimiento de tu negocio</span><span class="en">Give your assistant your business knowledge</span></h3>
+          <p><span class="es">Sube tu menú, catálogo, preguntas frecuentes o política de empresa. El asistente aprende cómo hablas, qué vendes y cómo atiendes — en minutos, no semanas. Sin programar nada.</span><span class="en">Upload your menu, catalog, FAQs or company policy. The assistant learns how you talk, what you sell and how you serve — in minutes, not weeks. No coding required.</span></p>
+        </div>
+        <div class="how-anim">
+          <div class="kb-card">
+            <div class="kb-header">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+              <span class="es">Base de conocimiento</span><span class="en">Knowledge base</span>
+            </div>
+            <div class="kb-body">
+              <div class="kb-file">
+                <div class="kb-file-icon" style="background:rgba(0,180,219,.1);">📄</div>
+                <div class="kb-file-info">
+                  <div class="kb-file-name"><span class="es">menu_restaurante.pdf</span><span class="en">restaurant_menu.pdf</span></div>
+                  <div class="kb-file-meta">PDF · 2.4 MB</div>
+                </div>
+                <div class="kb-file-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              </div>
+              <div class="kb-file">
+                <div class="kb-file-icon" style="background:rgba(110,231,183,.1);">📋</div>
+                <div class="kb-file-info">
+                  <div class="kb-file-name"><span class="es">preguntas_frecuentes.docx</span><span class="en">frequently_asked.docx</span></div>
+                  <div class="kb-file-meta">DOCX · 0.8 MB</div>
+                </div>
+                <div class="kb-file-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              </div>
+              <div class="kb-file">
+                <div class="kb-file-icon" style="background:rgba(196,181,253,.1);">🌐</div>
+                <div class="kb-file-info">
+                  <div class="kb-file-name">synergiaautomation.com</div>
+                  <div class="kb-file-meta">URL · <span class="es">23 páginas indexadas</span><span class="en">23 pages indexed</span></div>
+                </div>
+                <div class="kb-file-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              </div>
+              <div class="kb-file">
+                <div class="kb-file-icon" style="background:rgba(251,191,36,.1);">📊</div>
+                <div class="kb-file-info">
+                  <div class="kb-file-name"><span class="es">catalogo_precios.xlsx</span><span class="en">price_catalog.xlsx</span></div>
+                  <div class="kb-file-meta">XLSX · 1.1 MB</div>
+                </div>
+                <div class="kb-file-done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              </div>
+            </div>
+            <div class="kb-footer">
+              <span class="kb-count"><span class="es">4 fuentes · 47 fragmentos indexados</span><span class="en">4 sources · 47 chunks indexed</span></span>
+              <span class="kb-status"><span class="es">Listo</span><span class="en">Ready</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STEP 2: Connect ── -->
+      <div class="how-step reverse fade-up">
+        <div class="how-step-text">
+          <div class="how-step-num">
+            <span class="how-step-num-circle">2</span>
+            <span class="how-step-num-label"><span class="es">Conecta</span><span class="en">Connect</span></span>
+          </div>
+          <h3><span class="es">Un asistente, todos tus canales</span><span class="en">One assistant, all your channels</span></h3>
+          <p><span class="es">WhatsApp Business API, Telegram, Instagram DM y tu sitio web — todo desde una sola plataforma. Tus clientes te escriben donde prefieran y el asistente siempre responde con el mismo conocimiento y personalidad.</span><span class="en">WhatsApp Business API, Telegram, Instagram DM and your website — all from one platform. Your customers write where they prefer and the assistant always responds with the same knowledge and personality.</span></p>
+        </div>
+        <div class="how-anim">
+          <div class="ch-grid">
+
+            <!-- WhatsApp -->
+            <div class="ch-card" data-ch="whatsapp">
+              <div class="ch-card-top">
+                <div class="ch-icon-lg" style="background:rgba(37,211,102,.1);">
+                  <img src="images/channels/whatsapp.svg" alt="WhatsApp">
+                </div>
+                <span class="ch-status ch-status--active"><span class="es">ACTIVO</span><span class="en">ACTIVE</span></span>
+              </div>
+              <div class="ch-card-name">WhatsApp Business</div>
+              <div class="ch-card-desc"><span class="es">Conecta tu API oficial de Meta para flujo masivo de mensajes.</span><span class="en">Connect your official Meta API for high-volume messaging.</span></div>
+              <hr class="ch-card-divider">
+              <div class="ch-card-bottom">
+                <div class="ch-icon-stack">
+                  <div class="ch-stack-item"><?xml version="1.0"?><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+                  <div class="ch-stack-item"><img src="images/channels/whatsapp.svg" alt=""></div>
+                </div>
+                <span class="ch-card-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </div>
+            </div>
+
+            <!-- Telegram -->
+            <div class="ch-card" data-ch="telegram">
+              <div class="ch-card-top">
+                <div class="ch-icon-lg" style="background:rgba(40,168,223,.1);">
+                  <img src="images/channels/telegram.svg" alt="Telegram">
+                </div>
+                <span class="ch-status ch-status--active"><span class="es">ACTIVO</span><span class="en">ACTIVE</span></span>
+              </div>
+              <div class="ch-card-name">Telegram Bot</div>
+              <div class="ch-card-desc"><span class="es">Sincronización instantánea vía API de BotFather.</span><span class="en">Instant sync via BotFather API.</span></div>
+              <hr class="ch-card-divider">
+              <div class="ch-card-bottom">
+                <div class="ch-icon-stack">
+                  <div class="ch-stack-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+                  <div class="ch-stack-item"><img src="images/channels/telegram.svg" alt=""></div>
+                </div>
+                <span class="ch-card-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </div>
+            </div>
+
+            <!-- Web Chat -->
+            <div class="ch-card" data-ch="webchat">
+              <div class="ch-card-top">
+                <div class="ch-icon-lg" style="background:rgba(0,180,219,.1);">
+                  <img src="images/channels/webchat.svg" alt="Web Chat">
+                </div>
+                <span class="ch-status ch-status--active"><span class="es">ACTIVO</span><span class="en">ACTIVE</span></span>
+              </div>
+              <div class="ch-card-name">Web Chat SDK</div>
+              <div class="ch-card-desc"><span class="es">Incrusta tu bot en cualquier sitio web con una línea de código.</span><span class="en">Embed your bot in any website with one line of code.</span></div>
+              <hr class="ch-card-divider">
+              <div class="ch-card-bottom">
+                <div class="ch-icon-stack">
+                  <div class="ch-stack-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+                  <div class="ch-stack-item"><img src="images/channels/webchat.svg" alt=""></div>
+                </div>
+                <span class="ch-card-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </div>
+            </div>
+
+            <!-- Instagram -->
+            <div class="ch-card" data-ch="instagram">
+              <div class="ch-card-top">
+                <div class="ch-icon-lg" style="background:rgba(225,48,108,.08);">
+                  <img src="images/channels/instagram.svg" alt="Instagram">
+                </div>
+                <span class="ch-status ch-status--soon"><span class="es">PRONTO</span><span class="en">SOON</span></span>
+              </div>
+              <div class="ch-card-name">Instagram DM</div>
+              <div class="ch-card-desc"><span class="es">Gestión inteligente de menciones y mensajes directos.</span><span class="en">Smart management of mentions and direct messages.</span></div>
+              <hr class="ch-card-divider">
+              <div class="ch-card-bottom">
+                <div class="ch-icon-stack">
+                  <div class="ch-stack-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+                  <div class="ch-stack-item"><img src="images/channels/instagram.svg" alt=""></div>
+                </div>
+                <span class="ch-card-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </div>
+            </div>
+
+            <!-- Messenger -->
+            <div class="ch-card" data-ch="messenger">
+              <div class="ch-card-top">
+                <div class="ch-icon-lg" style="background:rgba(0,120,255,.08);">
+                  <img src="images/channels/messenger.svg" alt="Messenger">
+                </div>
+                <span class="ch-status ch-status--soon"><span class="es">PRONTO</span><span class="en">SOON</span></span>
+              </div>
+              <div class="ch-card-name">Messenger</div>
+              <div class="ch-card-desc"><span class="es">Automatiza conversaciones en Facebook Messenger.</span><span class="en">Automate conversations on Facebook Messenger.</span></div>
+              <hr class="ch-card-divider">
+              <div class="ch-card-bottom">
+                <div class="ch-icon-stack">
+                  <div class="ch-stack-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+                  <div class="ch-stack-item"><img src="images/channels/messenger.svg" alt=""></div>
+                </div>
+                <span class="ch-card-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </div>
+            </div>
+
+            <!-- API (coming soon) -->
+            <div class="ch-card ch-card--soon">
+              <div class="ch-card-top">
+                <div class="ch-icon-lg" style="background:rgba(255,255,255,.05);">
+                  <img src="images/channels/api.svg" alt="API">
+                </div>
+                <span class="ch-status ch-status--soon"><span class="es">PRONTO</span><span class="en">SOON</span></span>
+              </div>
+              <div class="ch-card-name">REST API</div>
+              <div class="ch-card-desc"><span class="es">Integra Skylab en cualquier plataforma via webhooks.</span><span class="en">Integrate Skylab into any platform via webhooks.</span></div>
+              <hr class="ch-card-divider">
+              <div class="ch-card-bottom">
+                <div class="ch-icon-stack">
+                  <div class="ch-stack-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+                  <div class="ch-stack-item"><img src="images/channels/api.svg" alt=""></div>
+                </div>
+                <span class="ch-card-arrow"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STEP 3: Operate ── -->
+      <div class="how-step fade-up">
+        <div class="how-step-text">
+          <div class="how-step-num">
+            <span class="how-step-num-circle">3</span>
+            <span class="how-step-num-label"><span class="es">Opera y mejora</span><span class="en">Operate &amp; improve</span></span>
+          </div>
+          <h3><span class="es">Monitorea, optimiza y escala en tiempo real</span><span class="en">Monitor, optimize and scale in real time</span></h3>
+          <p><span class="es">Visualiza conversaciones activas, recibe transferencias inteligentes cuando el cliente lo necesita, y usa la analítica para entender qué preguntan tus clientes y mejorar continuamente.</span><span class="en">Visualize active conversations, receive smart handoffs when customers need it, and use analytics to understand what your customers ask and continuously improve.</span></p>
+        </div>
+        <div class="how-anim">
+          <div class="live-chat-wrap">
+            <div class="live-chat-card">
+              <div class="lc-head">
+                <div class="lc-avatar">🤖</div>
+                <div class="lc-info">
+                  <div class="lc-name">Skylab · La Piazza</div>
+                  <div class="lc-sub"><span class="es">En línea ahora</span><span class="en">Online now</span></div>
+                </div>
+              </div>
+              <div class="lc-msgs">
+                <div class="lc-typing"><span></span><span></span><span></span></div>
+                <div class="lc-msg bot"><span class="es">¡Hola! Bienvenido a La Piazza 🍕 ¿En qué te puedo ayudar?</span><span class="en">Hello! Welcome to La Piazza 🍕 How can I help you?</span></div>
+                <div class="lc-msg user"><span class="es">¿Hacen reservas para esta noche?</span><span class="en">Do you take reservations for tonight?</span></div>
+                <div class="lc-msg bot"><span class="es">¡Claro! Tenemos mesas a las 7pm y 9pm. ¿Para cuántas personas?</span><span class="en">Of course! We have tables at 7pm and 9pm. How many people?</span></div>
+                <div class="lc-msg user"><span class="es">Para 4, a las 7pm 👍</span><span class="en">For 4, at 7pm 👍</span></div>
+              </div>
+            </div>
+            <div class="lc-stats">
+              <div class="lc-stat">
+                <div class="lc-stat-val" id="liveCount">247</div>
+                <div class="lc-stat-lbl"><span class="es">Activas ahora</span><span class="en">Active now</span></div>
+              </div>
+              <div class="lc-stat">
+                <div class="lc-stat-val" style="color:var(--success)">94%</div>
+                <div class="lc-stat-lbl"><span class="es">Sin intervención humana</span><span class="en">No human needed</span></div>
+              </div>
+              <div class="lc-stat">
+                <div class="lc-stat-val" style="color:#fbbf24">4.8★</div>
+                <div class="lc-stat-lbl"><span class="es">Satisfacción</span><span class="en">Satisfaction</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /how-steps -->
+  </div>
+</section>
+
+<!-- ===========================
+     FEATURES
+=========================== -->
+<section id="features" style="padding: 0 0 100px;">
+  <div class="container">
+    <div style="text-align:center; margin-bottom:56px;">
+      <span class="section-label"><span class="es">Características</span><span class="en">Features</span></span>
+      <h2 class="fade-up">
+        <span class="es">Todo lo que necesitas para <span class="gradient-text">automatizar</span></span>
+        <span class="en">Everything you need to <span class="gradient-text">automate</span></span>
+      </h2>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card fade-up">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+        </div>
+        <h3><span class="es">Personalidad humanizada</span><span class="en">Humanized personality</span></h3>
+        <p><span class="es">Define el nombre, tono, estilo de escritura y personalidad de tu asistente. Que suene como parte de tu equipo, no como un robot.</span><span class="en">Define the name, tone, writing style and personality of your assistant. Make it sound like part of your team, not a robot.</span></p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3><span class="es">Omnicanal nativo</span><span class="en">Native omnichannel</span></h3>
+        <p><span class="es">WhatsApp Business API, Telegram, Instagram DM, sitio web — una sola plataforma para gestionar todas las conversaciones de tus clientes.</span><span class="en">WhatsApp Business API, Telegram, Instagram DM, website — one platform to manage all your customer conversations.</span></p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        </div>
+        <h3><span class="es">Base de conocimiento</span><span class="en">Knowledge base</span></h3>
+        <p><span class="es">Sube PDFs, documentos, URLs o escribe directamente. El asistente aprende tu negocio con búsqueda vectorial de alta precisión.</span><span class="en">Upload PDFs, documents, URLs or write directly. The assistant learns your business with high-precision vector search.</span></p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <h3><span class="es">Analítica en tiempo real</span><span class="en">Real-time analytics</span></h3>
+        <p><span class="es">Volumen de conversaciones, tasa de resolución, satisfacción del cliente, temas más consultados — todo en un dashboard limpio y accionable.</span><span class="en">Conversation volume, resolution rate, customer satisfaction, top topics — all in a clean, actionable dashboard.</span></p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3><span class="es">Transferencia inteligente</span><span class="en">Smart handoff</span></h3>
+        <p><span class="es">Cuando el asistente detecta que la conversación necesita un humano, transfiere con contexto completo. El agente retoma sin que el cliente repita nada.</span><span class="en">When the assistant detects a conversation needs a human, it transfers with full context. The agent picks up without the customer repeating anything.</span></p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3><span class="es">Seguridad empresarial</span><span class="en">Enterprise security</span></h3>
+        <p><span class="es">Aislamiento multitenant, cifrado en tránsito y reposo, RLS por cliente, cumplimiento con Ley 1581 de Habeas Data Colombia.</span><span class="en">Multi-tenant isolation, encryption in transit and at rest, per-client RLS, compliance with Colombia's Habeas Data Law 1581.</span></p>
+      </div>
+    </div>
+  </div>
+
+<!-- ===========================
+     BENTO HIGHLIGHT
+=========================== -->
+<section class="section-bento">
+  <div class="container">
+    <div class="bento-grid">
+
+      <!-- LEFT: Two stacked dark cards -->
+      <div class="bento-left">
+
+        <div class="bento-card bento-card--dark fade-up">
+          <span class="bento-badge--cyan"><span class="es">⚡ VELOCIDAD</span><span class="en">⚡ SPEED</span></span>
+          <h3 class="bento-title">
+            <span class="es">Responde en menos de 2 segundos</span>
+            <span class="en">Responds in under 2 seconds</span>
+          </h3>
+          <p class="bento-desc">
+            <span class="es">Latencia optimizada con cache inteligente y modelos fine-tuned para tu negocio.</span>
+            <span class="en">Optimized latency with intelligent cache and fine-tuned models for your business.</span>
+          </p>
+          <div class="bento-stat">
+            <span class="bento-stat-num">&lt;2s</span>
+            <span class="bento-stat-label"><span class="es">tiempo de respuesta</span><span class="en">response time</span></span>
+          </div>
+        </div>
+
+        <div class="bento-card bento-card--dark fade-up">
+          <span class="bento-badge--cyan"><span class="es">🌙 DISPONIBILIDAD</span><span class="en">🌙 AVAILABILITY</span></span>
+          <h3 class="bento-title">
+            <span class="es">99.9% uptime garantizado</span>
+            <span class="en">99.9% uptime guaranteed</span>
+          </h3>
+          <p class="bento-desc">
+            <span class="es">Tu asistente atiende clientes en festivos, madrugadas y fines de semana — sin excepciones.</span>
+            <span class="en">Your assistant serves customers on holidays, late nights and weekends — no exceptions.</span>
+          </p>
+          <div class="bento-stat">
+            <span class="bento-stat-num">24/7</span>
+            <span class="bento-stat-label"><span class="es">sin interrupciones</span><span class="en">non-stop</span></span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Cyan feature card -->
+      <div class="bento-right">
+        <div class="bento-card bento-card--cyan fade-up">
+          <div class="bento-cyan-inner">
+            <div class="bento-cyan-text">
+              <span class="bento-badge"><span class="es">🔌 ZONA DEV</span><span class="en">🔌 DEV ZONE</span></span>
+              <h2 class="bento-title">SDK &amp; Webhooks</h2>
+              <p class="bento-desc">
+                <span class="es">Conecta Skylab con tu CRM, inventario o sistema propio vía nuestra API REST. Automatiza flujos sin límites.</span>
+                <span class="en">Connect Skylab to your CRM, inventory or custom system via our REST API. Automate workflows without limits.</span>
+              </p>
+              <a href="#" class="bento-btn">
+                <span class="es">GENERAR API KEY</span>
+                <span class="en">GET API KEY</span>
+              </a>
+            </div>
+            <div class="bento-icon-circle">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#061018" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</section>
+
+
+
+<!-- ===========================
+     DEMO CAROUSEL
+=========================== -->
+<section class="section-demos">
+  <div class="container"><div class="demos-header fade-up">
+    <span class="section-label">
+      <span class="es">Skylab en acción</span>
+      <span class="en">Skylab in action</span>
+    </span>
+    <h2>
+      <span class="es">Un asistente para <span class="gradient-text">cada industria</span></span>
+      <span class="en">An assistant for <span class="gradient-text">every industry</span></span>
+    </h2>
+    <p style="color:var(--text-2);font-size:1.1rem;margin-top:16px;max-width:560px;margin-left:auto;margin-right:auto;">
+      <span class="es">Conversaciones reales que convierten visitantes en clientes, las 24 horas del día.</span>
+      <span class="en">Real conversations that convert visitors into customers, 24 hours a day.</span>
+    </p>
+  </div></div><!-- /container -->
+
+  <div class="carousel-wrap fade-up">
+    <div class="carousel-progress" id="carouselProgress"></div>
+    <div class="carousel-track" id="carouselTrack">
+
+      <!-- Slide 1: Fitness -->
+      <div class="carousel-slide">
+        <img src="images/demos/fitness.jpg" alt="FitBot — Gimnasio" draggable="false" />
+        <div class="slide-caption">
+          <div class="slide-caption-text">
+            <div class="slide-industry">💪 <span class="es">Fitness & Deporte</span><span class="en">Fitness & Sport</span></div>
+            <h3><span class="es">Agenda clases al instante</span><span class="en">Book classes instantly</span></h3>
+            <p><span class="es">Reservas, horarios y pagos — sin llamadas, sin esperas.</span><span class="en">Bookings, schedules and payments — no calls, no waiting.</span></p>
+          </div>
+          <div class="slide-stat">
+            <span class="slide-stat-num">+40%</span>
+            <span class="slide-stat-lbl"><span class="es">reservas online</span><span class="en">online bookings</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 2: Dental -->
+      <div class="carousel-slide">
+        <img src="images/demos/dental.jpg" alt="DentalCare Bot — Clínica dental" draggable="false" />
+        <div class="slide-caption">
+          <div class="slide-caption-text">
+            <div class="slide-industry">🦷 <span class="es">Salud & Clínicas</span><span class="en">Health & Clinics</span></div>
+            <h3><span class="es">Citas médicas sin fricción</span><span class="en">Medical appointments, friction-free</span></h3>
+            <p><span class="es">Selección de tratamiento, fecha y hora en segundos.</span><span class="en">Treatment selection, date and time in seconds.</span></p>
+          </div>
+          <div class="slide-stat">
+            <span class="slide-stat-num">-70%</span>
+            <span class="slide-stat-lbl"><span class="es">llamadas perdidas</span><span class="en">missed calls</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 3: Food -->
+      <div class="carousel-slide">
+        <img src="images/demos/foodie.jpg" alt="Bot de Foodie — Restaurante" draggable="false" />
+        <div class="slide-caption">
+          <div class="slide-caption-text">
+            <div class="slide-industry">🍕 <span class="es">Restaurantes & Delivery</span><span class="en">Restaurants & Delivery</span></div>
+            <h3><span class="es">Pedidos directo por WhatsApp</span><span class="en">Orders directly via WhatsApp</span></h3>
+            <p><span class="es">Menú interactivo, pedido y confirmación en una sola conversación.</span><span class="en">Interactive menu, order and confirmation in one conversation.</span></p>
+          </div>
+          <div class="slide-stat">
+            <span class="slide-stat-num">3x</span>
+            <span class="slide-stat-lbl"><span class="es">más pedidos online</span><span class="en">more online orders</span></span>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Slide 4: Belleza -->
+      <div class="carousel-slide">
+        <img src="images/demos/belleza.jpg" alt="Bot de Belleza" draggable="false" />
+        <div class="slide-caption">
+          <div class="slide-caption-text">
+            <div class="slide-industry">💅 <span class="es">Belleza & Estética</span><span class="en">Beauty & Aesthetics</span></div>
+            <h3><span class="es">Reservas de citas sin llamadas</span><span class="en">Appointment booking without calls</span></h3>
+            <p><span class="es">Servicios, disponibilidad y confirmación en un solo chat.</span><span class="en">Services, availability and confirmation in one chat.</span></p>
+          </div>
+          <div class="slide-stat">
+            <span class="slide-stat-num">+60%</span>
+            <span class="slide-stat-lbl"><span class="es">citas agendadas</span><span class="en">booked appointments</span></span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.carousel-track -->
+
+    <!-- Arrows -->
+    <button class="carousel-btn carousel-btn--prev" onclick="carouselMove(-1)" aria-label="Anterior">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="carousel-btn carousel-btn--next" onclick="carouselMove(1)" aria-label="Siguiente">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div><!-- /.carousel-wrap -->
+
+  <!-- Dots -->
+  <div class="carousel-dots" id="carouselDots">
+    <button class="carousel-dot active" onclick="carouselGoTo(0)"></button>
+    <button class="carousel-dot" onclick="carouselGoTo(1)"></button>
+    <button class="carousel-dot" onclick="carouselGoTo(2)"></button>
+    <button class="carousel-dot" onclick="carouselGoTo(3)"></button>
+  </div>
+</section>
+
+<!-- ===========================
+     BEFORE / AFTER
+=========================== -->
+<section class="section-compare">
+  <div class="container">
+    <div style="text-align:center;">
+      <span class="section-label"><span class="es">La diferencia</span><span class="en">The difference</span></span>
+      <h2 class="fade-up">
+        <span class="es">Tu negocio, <span class="gradient-text">antes y después</span></span>
+        <span class="en">Your business, <span class="gradient-text">before and after</span></span>
+      </h2>
+    </div>
+
+    <div class="compare-grid">
+      <!-- BEFORE -->
+      <div class="compare-card compare-card--before fade-up">
+        <span class="compare-label compare-label--before">😰 <span class="es">Sin Skylab</span><span class="en">Without Skylab</span></span>
+        <h3><span class="es">Todo trabajo manual, sin escala</span><span class="en">All manual work, no scale</span></h3>
+        <ul class="compare-list">
+          <li><span class="es">Respondes los mismos mensajes una y otra vez</span><span class="en">You answer the same messages over and over</span></li>
+          <li><span class="es">Pierdes clientes que escriben fuera de horario</span><span class="en">You lose customers who write outside business hours</span></li>
+          <li><span class="es">No tienes visibilidad de qué preguntan tus clientes</span><span class="en">No visibility into what your customers are asking</span></li>
+          <li><span class="es">Tu equipo pierde tiempo en tareas repetitivas</span><span class="en">Your team wastes time on repetitive tasks</span></li>
+          <li><span class="es">Cada canal es un caos separado de gestionar</span><span class="en">Each channel is a separate mess to manage</span></li>
+        </ul>
+      </div>
+
+      <!-- AFTER -->
+      <div class="compare-card compare-card--after fade-up">
+        <span class="compare-label compare-label--after">🚀 <span class="es">Con Skylab</span><span class="en">With Skylab</span></span>
+        <h3><span class="es">Automatizado, escalable, siempre activo</span><span class="en">Automated, scalable, always on</span></h3>
+        <ul class="compare-list">
+          <li><span class="es">Tu asistente responde al instante, 24/7, en todos los canales</span><span class="en">Your assistant responds instantly, 24/7, on all channels</span></li>
+          <li><span class="es">Nunca más pierdes un lead por falta de respuesta</span><span class="en">Never lose a lead again due to slow response</span></li>
+          <li><span class="es">Dashboard con analytics de cada conversación en tiempo real</span><span class="en">Dashboard with real-time analytics of every conversation</span></li>
+          <li><span class="es">Tu equipo se enfoca en lo que realmente importa</span><span class="en">Your team focuses on what really matters</span></li>
+          <li><span class="es">WhatsApp, Telegram, Instagram y más desde un solo lugar</span><span class="en">WhatsApp, Telegram, Instagram and more from one place</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===========================
+     TEMPLATES
+=========================== -->
+<section class="section-templates" id="templates">
+  <div class="container">
+    <div class="templates-header">
+      <span class="section-label"><span class="es">Plantillas por industria</span><span class="en">Industry templates</span></span>
+      <h2 class="fade-up">
+        <span class="es">Empieza con una plantilla <span class="gradient-text">diseñada para tu negocio</span></span>
+        <span class="en">Start with a template <span class="gradient-text">designed for your business</span></span>
+      </h2>
+      <p class="fade-up">
+        <span class="es">Elige tu industria, personaliza el nombre y la personalidad, y lanza en menos de 30 minutos.</span>
+        <span class="en">Choose your industry, customize the name and personality, and launch in under 30 minutes.</span>
+      </p>
+    </div>
+
+    <div class="templates-grid">
+
+      <!-- Restaurantes -->
+      <div class="template-card fade-up">
+        <img src="images/templates/restaurantes.jpg" alt="Restaurantes" onerror="this.style.display='none'" />
+        <div class="template-overlay"></div>
+        <div class="template-text">
+          <div class="template-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>
+          </div>
+          <h3><span class="es">Restaurantes</span><span class="en">Restaurants</span></h3>
+        </div>
+      </div>
+
+      <!-- Barbería -->
+      <div class="template-card fade-up">
+        <img src="images/templates/barberia.jpg" alt="Barberías / Estética" onerror="this.style.display='none'" />
+        <div class="template-overlay"></div>
+        <div class="template-text">
+          <div class="template-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+          </div>
+          <h3><span class="es">Barberías / Estética</span><span class="en">Barber / Beauty</span></h3>
+        </div>
+      </div>
+
+      <!-- E-commerce -->
+      <div class="template-card fade-up">
+        <img src="images/templates/ecommerce.jpg" alt="E-commerce" onerror="this.style.display='none'" />
+        <div class="template-overlay"></div>
+        <div class="template-text">
+          <div class="template-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          </div>
+          <h3>E-commerce</h3>
+        </div>
+      </div>
+
+      <!-- Salud -->
+      <div class="template-card fade-up">
+        <img src="images/templates/salud.jpg" alt="Salud" onerror="this.style.display='none'" />
+        <div class="template-overlay"></div>
+        <div class="template-text">
+          <div class="template-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <h3><span class="es">Salud</span><span class="en">Health</span></h3>
+        </div>
+      </div>
+
+      <!-- Educación -->
+      <div class="template-card fade-up">
+        <img src="images/templates/educacion.jpg" alt="Educación" onerror="this.style.display='none'" />
+        <div class="template-overlay"></div>
+        <div class="template-text">
+          <div class="template-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          </div>
+          <h3><span class="es">Educación</span><span class="en">Education</span></h3>
+        </div>
+      </div>
+
+      <!-- Inmobiliaria -->
+      <div class="template-card fade-up">
+        <img src="images/templates/inmobiliaria.jpg" alt="Inmobiliaria" onerror="this.style.display='none'" />
+        <div class="template-overlay"></div>
+        <div class="template-text">
+          <div class="template-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <h3><span class="es">Inmobiliaria</span><span class="en">Real Estate</span></h3>
+        </div>
+      </div>
+
+      <!-- Automotriz -->
+      <div class="template-card fade-up">
+        <img src="images/templates/automotriz.jpg" alt="Automotriz" onerror="this.style.display='none'" />
+        <div class="template-overlay"></div>
+        <div class="template-text">
+          <div class="template-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <h3><span class="es">Automotriz</span><span class="en">Automotive</span></h3>
+        </div>
+      </div>
+
+      <!-- Tu industria -->
+      <div class="template-card custom-card fade-up">
+        <img src="images/templates/tu-industria.jpg" alt="Tu industria" onerror="this.style.display='none'" />
+        <div class="template-overlay"></div>
+        <div class="template-text">
+          <div class="template-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <h3><span class="es">Tu industria</span><span class="en">Your industry</span></h3>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ===========================
+     PRICING / CATÁLOGO
+=========================== -->
+<section class="section-pricing" id="pricing">
+  <div class="container">
+    <div class="pricing-header">
+      <span class="section-label"><span class="es">Planes y precios</span><span class="en">Plans & pricing</span></span>
+      <h2 class="fade-up">
+        <span class="es"><span class="gradient-text">Catálogo</span> de servicios</span>
+        <span class="en">Service <span class="gradient-text">catalog</span></span>
+      </h2>
+      <p class="fade-up">
+        <span class="es">Precios en pesos colombianos (COP). Sin comisiones ocultas. Cancela cuando quieras.</span>
+        <span class="en">Prices in Colombian pesos (COP). No hidden fees. Cancel anytime.</span>
+      </p>
+
+      <div class="billing-toggle">
+        <span class="es">Facturación</span><span class="en">Billing</span>
+        <div class="toggle-pill">
+          <button class="active" id="btnMonthly" onclick="setBilling('monthly')">
+            <span class="es">Mensual</span><span class="en">Monthly</span>
+          </button>
+          <button id="btnAnnual" onclick="setBilling('annual')">
+            <span class="es">Anual</span><span class="en">Annual</span>
+          </button>
+        </div>
+        <span class="save-badge"><span class="es">Ahorra 20%</span><span class="en">Save 20%</span></span>
+      </div>
+    </div>
+
+    <div class="pricing-grid">
+
+      <!-- STARTER -->
+      <div class="plan-card fade-up">
+        <div class="plan-name">Starter</div>
+        <div class="plan-desc"><span class="es">Para negocios que quieren empezar a automatizar</span><span class="en">For businesses starting to automate</span></div>
+        <div class="plan-price">
+          <span class="plan-currency">COP</span>
+          <span class="plan-amount" data-monthly="149.000" data-annual="119.000">149.000</span>
+        </div>
+        <div class="plan-period"><span class="es">/ mes</span><span class="en">/ month</span></div>
+        <div class="plan-annual-note" id="note-starter"></div>
+        <hr class="plan-divider" />
+        <ul class="plan-features">
+          <li>
+            <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><strong>1</strong> <span class="es">asistente activo</span><span class="en">active assistant</span></span>
+          </li>
+          <li>
+            <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><strong>500</strong> <span class="es">conversaciones / mes</span><span class="en">conversations / month</span></span>
+          </li>
+          <li>
+            <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><strong>1</strong> <span class="es">canal (WhatsApp)</span><span class="en">channel (WhatsApp)</span></span>
+          </li>
+          <li>
+            <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><span class="es">Base de conocimiento básica (5 MB)</span><span class="en">Basic knowledge base (5 MB)</span></span>
+          </li>
+          <li>
+            <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><span class="es">Plantillas de industria</span><span class="en">Industry templates</span></span>
+          </li>
+          <li>
+            <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><span class="es">Dashboard de analítica</span><span class="en">Analytics dashboard</span></span>
+          </li>
+          <li>
+            <span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+            <span><span class="es">Soporte por email</span><span class="en">Email support</span></span>
+          </li>
+        </ul>
+        <a href="#" class="btn btn-secondary plan-cta"><span class="es">Empezar gratis</span><span class="en">Start free</span></a>
+        <p class="plan-limit"><span class="es">Sin tarjeta de crédito · 14 días gratis</span><span class="en">No credit card · 14-day free trial</span></p>
+      </div>
+
+      <!-- GROWTH -->
+      <div class="plan-card featured fade-up">
+        <span class="plan-popular"><span class="es">MÁS POPULAR</span><span class="en">MOST POPULAR</span></span>
+        <div class="plan-name">Growth</div>
+        <div class="plan-desc"><span class="es">Para negocios en crecimiento que quieren escalar la atención</span><span class="en">For growing businesses that want to scale customer service</span></div>
+        <div class="plan-price">
+          <span class="plan-currency">COP</span>
+          <span class="plan-amount" data-monthly="349.000" data-annual="279.000">349.000</span>
+        </div>
+        <div class="plan-period"><span class="es">/ mes</span><span class="en">/ month</span></div>
+        <div class="plan-annual-note" id="note-growth"></div>
+        <hr class="plan-divider" />
+        <ul class="plan-features">
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>3</strong> <span class="es">asistentes activos</span><span class="en">active assistants</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>3.000</strong> <span class="es">conversaciones / mes</span><span class="en">conversations / month</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>3</strong> <span class="es">canales (WhatsApp + Telegram + Web)</span><span class="en">channels (WhatsApp + Telegram + Web)</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Base de conocimiento avanzada (50 MB)</span><span class="en">Advanced knowledge base (50 MB)</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Transferencia inteligente a humano</span><span class="en">Smart human handoff</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Analítica avanzada + exportar reportes</span><span class="en">Advanced analytics + export reports</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Integración con CRM básico</span><span class="en">Basic CRM integration</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Soporte prioritario por WhatsApp</span><span class="en">Priority WhatsApp support</span></span></li>
+        </ul>
+        <a href="#" class="btn btn-primary plan-cta"><span class="es">Empezar ahora</span><span class="en">Get started</span></a>
+        <p class="plan-limit"><span class="es">Sin tarjeta de crédito · 14 días gratis</span><span class="en">No credit card · 14-day free trial</span></p>
+      </div>
+
+      <!-- PRO -->
+      <div class="plan-card fade-up">
+        <div class="plan-name">Pro</div>
+        <div class="plan-desc"><span class="es">Para empresas que necesitan automatización completa y multiequipo</span><span class="en">For companies needing full automation and multi-team</span></div>
+        <div class="plan-price">
+          <span class="plan-currency">COP</span>
+          <span class="plan-amount" data-monthly="699.000" data-annual="559.000">699.000</span>
+        </div>
+        <div class="plan-period"><span class="es">/ mes</span><span class="en">/ month</span></div>
+        <div class="plan-annual-note" id="note-pro"></div>
+        <hr class="plan-divider" />
+        <ul class="plan-features">
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>10</strong> <span class="es">asistentes activos</span><span class="en">active assistants</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><strong>15.000</strong> <span class="es">conversaciones / mes</span><span class="en">conversations / month</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Todos los canales</span><span class="en">All channels</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Base de conocimiento ilimitada</span><span class="en">Unlimited knowledge base</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">API + Webhooks propios</span><span class="en">API + custom webhooks</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Múltiples usuarios / agentes</span><span class="en">Multiple users / agents</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Integraciones avanzadas (CRM, ERP)</span><span class="en">Advanced integrations (CRM, ERP)</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Gerente de cuenta dedicado</span><span class="en">Dedicated account manager</span></span></li>
+        </ul>
+        <a href="#" class="btn btn-secondary plan-cta"><span class="es">Empezar ahora</span><span class="en">Get started</span></a>
+        <p class="plan-limit"><span class="es">Sin tarjeta de crédito · 14 días gratis</span><span class="en">No credit card · 14-day free trial</span></p>
+      </div>
+
+      <!-- ENTERPRISE -->
+      <div class="plan-card plan-enterprise fade-up">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-desc"><span class="es">Soluciones a medida para grandes organizaciones</span><span class="en">Custom solutions for large organizations</span></div>
+        <div class="plan-price">
+          <span class="plan-amount" style="font-size:1.6rem;"><span class="es">A medida</span><span class="en">Custom</span></span>
+        </div>
+        <div class="plan-period"><span class="es">Cotización personalizada</span><span class="en">Custom quote</span></div>
+        <div class="plan-annual-note"></div>
+        <hr class="plan-divider" />
+        <ul class="plan-features">
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Asistentes y conversaciones ilimitadas</span><span class="en">Unlimited assistants and conversations</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Modelo de IA privado / on-premise</span><span class="en">Private / on-premise AI model</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">SLA de disponibilidad garantizado</span><span class="en">Guaranteed uptime SLA</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Onboarding e implementación dedicada</span><span class="en">Dedicated onboarding &amp; implementation</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Soporte 24/7 con canal prioritario</span><span class="en">24/7 support with priority channel</span></span></li>
+          <li><span class="check-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span><span><span class="es">Acuerdo de confidencialidad (NDA)</span><span class="en">Non-disclosure agreement (NDA)</span></span></li>
+        </ul>
+        <a href="mailto:contacto@synergiaautomation.com?subject=Enterprise Skylab" class="btn btn-secondary plan-cta"><span class="es">Hablar con ventas</span><span class="en">Talk to sales</span></a>
+        <p class="plan-limit"><span class="es">También disponible para municipios y entidades públicas</span><span class="en">Also available for municipalities and public entities</span></p>
+      </div>
+
+    </div>
+
+    <div style="text-align:center; margin-top:40px; color:var(--text-3); font-size:.85rem;">
+      <span class="es">💬 ¿Tienes preguntas sobre cuál plan elegir? <a href="mailto:contacto@synergiaautomation.com" style="color:var(--cyan);">Escríbenos</a> y te ayudamos.</span>
+      <span class="en">💬 Have questions about which plan to choose? <a href="mailto:contacto@synergiaautomation.com" style="color:var(--cyan);">Write to us</a> and we'll help.</span>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="section-cta">
+  <div class="container">
+    <div class="cta-box fade-up">
+      <div class="badge" style="margin:0 auto 24px;">
+        <span class="es">🚀 Primer cliente Skylab</span>
+        <span class="en">🚀 First Skylab client</span>
+      </div>
+      <h2>
+        <span class="es">¿Listo para transformar la forma en que hablas con tus clientes?</span>
+        <span class="en">Ready to transform the way you talk to your customers?</span>
+      </h2>
+      <p>
+        <span class="es">Crea tu primer asistente en menos de 30 minutos. Sin tarjeta de crédito, sin contratos — solo resultados.</span>
+        <span class="en">Create your first assistant in under 30 minutes. No credit card, no contracts — just results.</span>
+      </p>
+      <div class="cta-buttons">
+        <a href="#pricing" class="btn btn-primary btn-lg"><span class="es">Crear asistente gratis</span><span class="en">Create assistant free</span></a>
+        <a href="mailto:contacto@synergiaautomation.com" class="btn btn-secondary btn-lg"><span class="es">Hablar con un experto</span><span class="en">Talk to an expert</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="brand-kit/skylab-horizontal-transparent.png" alt="Skylab Human Bot" />
+        <p>
+          <span class="es">Plataforma de IA conversacional para negocios SMB. Automatiza conversaciones sin perder el toque humano.</span>
+          <span class="en">Conversational AI platform for SMB businesses. Automate conversations without losing the human touch.</span>
+        </p>
+        <div class="footer-tagline">
+          <span class="es">Un producto de</span>
+          <span class="en">A product by</span>
+          <img src="brand-kit/synergia-wordmark-transparent.png" alt="Synerg-IA Automation" />
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4><span class="es">Producto</span><span class="en">Product</span></h4>
+        <ul>
+          <li><a href="#features"><span class="es">Características</span><span class="en">Features</span></a></li>
+          <li><a href="#templates"><span class="es">Plantillas</span><span class="en">Templates</span></a></li>
+          <li><a href="#pricing"><span class="es">Precios</span><span class="en">Pricing</span></a></li>
+          <li><a href="#">Changelog</a></li>
+          <li><a href="#">Roadmap</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4><span class="es">Empresa</span><span class="en">Company</span></h4>
+        <ul>
+          <li><a href="#"><span class="es">Acerca de</span><span class="en">About</span></a></li>
+          <li><a href="https://github.com/SynergiaAut" target="_blank">GitHub</a></li>
+          <li><a href="mailto:contacto@synergiaautomation.com"><span class="es">Contacto</span><span class="en">Contact</span></a></li>
+          <li><a href="#">Blog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#"><span class="es">Términos de uso</span><span class="en">Terms of use</span></a></li>
+          <li><a href="#"><span class="es">Privacidad</span><span class="en">Privacy</span></a></li>
+          <li><a href="#">Habeas Data</a></li>
+          <li><a href="#">Cookies</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 Synerg-IA Automation S.A.S. — Bogotá, Colombia.<br /><span class="es">Todos los derechos reservados.</span><span class="en">All rights reserved.</span></p>
+      <div class="footer-socials">
+        <a href="https://wa.me/573000000000" target="_blank" aria-label="WhatsApp">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        </a>
+        <a href="https://linkedin.com/company/synergia-automation" target="_blank" aria-label="LinkedIn">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg>
+        </a>
+        <a href="https://github.com/SynergiaAut" target="_blank" aria-label="GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function setLang(lang) {
+    document.documentElement.setAttribute('data-lang', lang);
+    document.getElementById('btnEs').classList.toggle('active', lang === 'es');
+    document.getElementById('btnEn').classList.toggle('active', lang === 'en');
+    try { localStorage.setItem('skylab-lang', lang); } catch(e) {}
+  }
+
+  let currentBilling = 'monthly';
+  function setBilling(type) {
+    currentBilling = type;
+    document.getElementById('btnMonthly').classList.toggle('active', type === 'monthly');
+    document.getElementById('btnAnnual').classList.toggle('active', type === 'annual');
+    const amounts = document.querySelectorAll('.plan-amount[data-monthly]');
+    amounts.forEach(el => { el.textContent = type === 'monthly' ? el.dataset.monthly : el.dataset.annual; });
+    const lang = document.documentElement.getAttribute('data-lang') || 'es';
+    const notes = {
+      'note-starter': { es: 'Facturado como $1.428.000/año', en: 'Billed as $1,428,000/year' },
+      'note-growth':  { es: 'Facturado como $3.348.000/año', en: 'Billed as $3,348,000/year' },
+      'note-pro':     { es: 'Facturado como $6.708.000/año', en: 'Billed as $6,708,000/year' },
+    };
+    Object.entries(notes).forEach(([id, text]) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = type === 'annual' ? `<span class="es">${text.es}</span><span class="en">${text.en}</span>` : '';
+    });
+  }
+
+  function openMobileMenu()  { document.getElementById('mobileMenu').classList.add('open');    document.body.style.overflow = 'hidden'; }
+    function closeMobileMenu() { document.getElementById('mobileMenu').classList.remove('open'); document.body.style.overflow = ''; }
+
+  // ── TYPEWRITER ──────────────────────────────────────────────────────────────
+  function initTypewriter() {
+    const words = ['WhatsApp', 'Telegram', 'Instagram', 'Web Chat', 'Messenger'];
+    let idx = 0;
+
+    function animateEl(el, newWord) {
+      if (!el) return;
+      let cur = el.textContent;
+      let i = cur.length;
+      function erase() {
+        if (i > 0) {
+          el.textContent = cur.slice(0, --i);
+          setTimeout(erase, 38);
+        } else {
+          let j = 0;
+          function type() {
+            if (j < newWord.length) {
+              el.textContent += newWord[j++];
+              setTimeout(type, 58);
+            }
+          }
+          setTimeout(type, 180);
+        }
+      }
+      erase();
+    }
+
+    setInterval(function() {
+      idx = (idx + 1) % words.length;
+      animateEl(document.getElementById('typeWord'),   words[idx]);
+      animateEl(document.getElementById('typeWordEn'), words[idx]);
+    }, 3400);
+  }
+
+  // ── LIVE CHAT ANIMATION ─────────────────────────────────────────────────────
+  function initLiveChat() {
+    const container = document.getElementById('lcpMessages');
+    if (!container) return;
+
+    const conversation = [
+      { from: 'user', text: 'Hola, quiero hacer una reserva 😊' },
+      { from: 'bot',  text: '¡Hola! 👋 Con mucho gusto. ¿Para qué fecha y hora?' },
+      { from: 'user', text: 'Para mañana a las 8pm, somos 3 personas' },
+      { from: 'bot',  text: '¡Perfecto! ¿A nombre de quién hago la reserva?' },
+      { from: 'user', text: 'A nombre de Carlos García' },
+      { from: 'bot',  text: '✅ ¡Listo Carlos! Reserva confirmada: mañana 8pm, 3 personas. Te enviamos recordatorio. ¡Nos vemos!' },
+    ];
+
+    const typingMs   = [0, 1100, 0, 800, 0, 1300];
+    const pauseAfter = [650, 800, 700, 750, 600, 3200];
+    let msgIdx = 0, typingEl = null;
+
+    function getTime() {
+      const d = new Date();
+      return d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+
+    function addMsg(msg) {
+      const el = document.createElement('div');
+      el.className = 'chat-msg ' + msg.from;
+      el.innerHTML = msg.text + '<div class="msg-time">' + getTime() + (msg.from === 'bot' ? ' ✓✓' : '') + '</div>';
+      container.appendChild(el);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function showTyping() {
+      typingEl = document.createElement('div');
+      typingEl.className = 'typing-indicator';
+      typingEl.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+      container.appendChild(typingEl);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function hideTyping() { if (typingEl) { typingEl.remove(); typingEl = null; } }
+
+    function playNext() {
+      if (msgIdx >= conversation.length) {
+        setTimeout(function() {
+          container.innerHTML = '';
+          msgIdx = 0;
+          setTimeout(playNext, 500);
+        }, 2200);
+        return;
+      }
+      const msg = conversation[msgIdx];
+      const typing = typingMs[msgIdx];
+      const pause  = pauseAfter[msgIdx];
+
+      if (msg.from === 'bot' && typing > 0) {
+        showTyping();
+        setTimeout(function() {
+          hideTyping();
+          addMsg(msg);
+          msgIdx++;
+          setTimeout(playNext, pause);
+        }, typing);
+      } else {
+        addMsg(msg);
+        msgIdx++;
+        setTimeout(playNext, pause);
+      }
+    }
+
+    setTimeout(playNext, 900);
+  }
+
+  // ── ANIMATIONS (scroll fade-up) ─────────────────────────────────────────────
+  function initAnimations() {
+    document.body.classList.add('js-ready');
+    const els = document.querySelectorAll('.fade-up');
+    const observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry, i) {
+        if (entry.isIntersecting) {
+          setTimeout(function() { entry.target.classList.add('visible'); }, i * 60);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.05 });
+    els.forEach(function(el) { observer.observe(el); });
+  }
+
+  // ── INIT ────────────────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', function() {
+    let savedLang = 'es';
+    try { savedLang = localStorage.getItem('skylab-lang') || 'es'; } catch(e) {}
+    setLang(savedLang);
+    initAnimations();
+    initTypewriter();
+    initLiveChat();
+  });
+
+  // ── CAROUSEL (seamless infinite loop) ──────────────────────────────────────
+  (function() {
+    var REAL_TOTAL = 4;
+    var duration   = 8000;  // ms per slide
+    var current    = 0;     // logical index (0-2)
+    var pos        = 0;     // track position (0 = first real, REAL_TOTAL = clone)
+    var sliding    = false;
+    var timer      = null;
+    var track, dots, prog;
+
+    function init() {
+      track = document.getElementById('carouselTrack');
+      dots  = document.querySelectorAll('.carousel-dot');
+      prog  = document.getElementById('carouselProgress');
+      if (!track) return;
+
+      // Clone first slide and append for seamless loop
+      var firstClone = track.children[0].cloneNode(true);
+      firstClone.setAttribute('aria-hidden', 'true');
+      track.appendChild(firstClone);
+
+      // Start progress and timer
+      startProgress();
+      timer = setInterval(advance, duration);
+
+      // Snap back silently when clone finishes sliding in
+      track.addEventListener('transitionend', function() {
+        if (pos === REAL_TOTAL) {
+          track.style.transition = 'none';
+          pos = 0;
+          track.style.transform = 'translateX(0%)';
+          sliding = false;
+        } else {
+          sliding = false;
+        }
+      });
+
+      // Pause on hover
+      var wrap = document.querySelector('.carousel-wrap');
+      if (wrap) {
+        wrap.addEventListener('mouseenter', function() { clearInterval(timer); stopProgress(); });
+        wrap.addEventListener('mouseleave', function() {
+          timer = setInterval(advance, duration);
+          startProgress();
+        });
+        // Swipe
+        var startX = 0;
+        wrap.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; }, {passive:true});
+        wrap.addEventListener('touchend', function(e) {
+          var dx = e.changedTouches[0].clientX - startX;
+          if (Math.abs(dx) > 50) { clearInterval(timer); move(dx < 0 ? 1 : -1); timer = setInterval(advance, duration); }
+        }, {passive:true});
+      }
+    }
+
+    function goTo(idx) {
+      if (sliding) return;
+      sliding = true;
+      pos     = idx;
+      current = idx % REAL_TOTAL;
+      track.style.transition = '1s cubic-bezier(.4,0,.2,1)';
+      track.style.transform  = 'translateX(-' + (pos * 100) + '%)';
+      updateDots();
+      resetProgress();
+    }
+
+    function advance() {
+      goTo(pos + 1);
+    }
+
+    function move(dir) {
+      var next = ((current + dir) % REAL_TOTAL + REAL_TOTAL) % REAL_TOTAL;
+      goTo(next);
+    }
+
+    function updateDots() {
+      if (!dots) return;
+      dots.forEach(function(d, i) { d.classList.toggle('active', i === current); });
+    }
+
+    function startProgress() {
+      if (!prog) return;
+      prog.style.transition = 'none';
+      prog.style.width = '0%';
+      requestAnimationFrame(function() { requestAnimationFrame(function() {
+        prog.style.transition = 'width ' + duration + 'ms linear';
+        prog.style.width = '100%';
+      }); });
+    }
+
+    function stopProgress() {
+      if (!prog) return;
+      var w = prog.getBoundingClientRect().width / prog.parentElement.getBoundingClientRect().width * 100;
+      prog.style.transition = 'none';
+      prog.style.width = w + '%';
+    }
+
+    function resetProgress() {
+      if (!prog) return;
+      prog.style.transition = 'none';
+      prog.style.width = '0%';
+      requestAnimationFrame(function() { requestAnimationFrame(function() {
+        prog.style.transition = 'width ' + duration + 'ms linear';
+        prog.style.width = '100%';
+      }); });
+    }
+
+    window.carouselMove   = function(dir) { clearInterval(timer); move(dir); timer = setInterval(advance, duration); };
+    window.carouselGoTo   = function(idx) { clearInterval(timer); goTo(idx); timer = setInterval(advance, duration); };
+
+    document.addEventListener('DOMContentLoaded', init);
+  })();
+
+</script>
+</body>
+</html>
