@@ -2232,6 +2232,84 @@
       transition: width linear;
     }
 
+
+    /* ===========================
+       MOBILE — COMPREHENSIVE FIX
+       <480px: phones
+       <768px: small tablets / large phones
+    =========================== */
+
+    @media (max-width: 768px) {
+      /* Typography scale down */
+      h1 { font-size: clamp(2rem, 8vw, 3rem); line-height: 1.1; }
+      h2 { font-size: clamp(1.6rem, 6vw, 2.2rem); }
+      h3 { font-size: 1.2rem; }
+
+      /* Section padding */
+      .section-problem, .section-features, .section-templates,
+      .section-pricing, .section-demos, .section-channels,
+      .section-bento, .section-how, .section-stats,
+      .section-testi, .section-compare { padding: 60px 0; }
+
+      /* Hero */
+      .hero { padding: 56px 0 40px; }
+      .hero p { font-size: 1rem; }
+      .hero .badge { align-self: center; }
+      .hero-ctas { flex-direction: column; align-items: stretch; gap: 10px; }
+      .hero-ctas .btn { justify-content: center; width: 100%; }
+      .hero-trust { flex-direction: column; gap: 6px; text-align: center; }
+
+      /* Live chat phone widget */
+      .live-chat-phone { max-width: 100%; border-radius: 18px; }
+
+      /* Channel cards — fix badge clipping */
+      .ch-card { padding: 16px 14px 14px; overflow: visible; }
+      .ch-card-top { flex-wrap: wrap; gap: 8px; }
+      .ch-status { font-size: .6rem; padding: 3px 8px; white-space: nowrap; overflow: visible; }
+      .ch-status--active::before { width: 5px; height: 5px; }
+      .ch-icon-lg { width: 50px; height: 50px; }
+      .ch-icon-lg img { width: 30px; height: 30px; }
+      .ch-card-name { font-size: 1rem; }
+      .ch-card-desc { font-size: .8rem; }
+
+      /* Pricing — single column */
+      .pricing-grid { grid-template-columns: 1fr; gap: 16px; }
+
+      /* Stats grid */
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+
+      /* Browser mockup — hide on small screens to save space */
+      .hero-mockup { display: none; }
+
+      /* Compare grid */
+      .compare-grid { grid-template-columns: 1fr; }
+
+      /* Carousel aspect ratio — taller on mobile */
+      .carousel-slide { aspect-ratio: 4/3; }
+
+      /* Nav */
+      .nav-logo img { height: 38px; }
+    }
+
+    @media (max-width: 480px) {
+      /* Extra small phones */
+      h1 { font-size: clamp(1.8rem, 9vw, 2.4rem); }
+
+      /* Channel grid — 1 column on very small screens */
+      .ch-grid { grid-template-columns: 1fr; }
+
+      /* Stats */
+      .stats-grid { grid-template-columns: 1fr; }
+      .stat-number { font-size: 2.4rem; }
+
+      /* Plan cards */
+      .plan-amount { font-size: 2.4rem; }
+
+      /* Footer */
+      .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+      .footer-brand > img { height: 80px !important; }
+    }
+
     </style>
 </head>
 <body>
@@ -3727,6 +3805,13 @@
   function initAnimations() {
     document.body.classList.add('js-ready');
     const els = document.querySelectorAll('.fade-up');
+    const vh = window.innerHeight;
+    // Synchronously show elements already in viewport (avoids async gap on mobile)
+    els.forEach(function(el) {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < vh) el.classList.add('visible');
+    });
+    // Observer for below-fold elements
     const observer = new IntersectionObserver(function(entries) {
       entries.forEach(function(entry, i) {
         if (entry.isIntersecting) {
@@ -3735,7 +3820,9 @@
         }
       });
     }, { threshold: 0.05 });
-    els.forEach(function(el) { observer.observe(el); });
+    els.forEach(function(el) {
+      if (!el.classList.contains('visible')) observer.observe(el);
+    });
   }
 
   // ── INIT ────────────────────────────────────────────────────────────────────
