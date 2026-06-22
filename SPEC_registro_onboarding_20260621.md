@@ -1,4 +1,4 @@
-# SPEC: Flujo de Registro y Confirmación de Email
+﻿# SPEC: Flujo de Registro y Confirmación de Email
 > Generado: 2026-06-21
 > Proyecto: Skylab — BotFlow Console
 > ID: —
@@ -141,25 +141,25 @@ export async function GET(request: Request) {
 
 ## 5. TASKS (Lista de implementación priorizada)
 
-- [ ] **T1: Verificar nombre real de tabla que relaciona users con tenants**
+- [x] **T1: Verificar nombre real de tabla que relaciona users con tenants**
   Abrir Supabase → Table Editor → buscar tabla que tenga columna `user_id` y `tenant_id`. Puede llamarse `tenant_users`, `user_tenant`, `profiles`, o similar. Anotar el nombre exacto para usarlo en el callback y en el registro.
   *Resultado esperado: nombre confirmado de la tabla.*
 
-- [ ] **T2: Crear `/app/auth/callback/route.ts`**
+- [x] **T2: Crear `/app/auth/callback/route.ts`**
   Implementar el GET handler según el plan de arriba, usando el nombre real de la tabla obtenido en T1.
   *Resultado esperado: al hacer clic en el link del email de confirmación de Supabase, el usuario llega a `/dashboard/onboarding`.*
 
-- [ ] **T3: Crear `/app/register/page.tsx`**
+- [x] **T3: Crear `/app/register/page.tsx`**
   Formulario de registro con email, contraseña y confirmación de contraseña. Diseño espejo de `/login/page.tsx`: mismo grid 2 columnas, mismos colores y animaciones. Llama al `signup()` action existente. Muestra estado de loading y mensajes de error desde `searchParams.message`.
   *Resultado esperado: usuario puede registrarse con email/contraseña y recibe email de confirmación.*
 
-- [ ] **T4: Editar `/app/login/page.tsx` — agregar link a /register**
+- [x] **T4: Editar `/app/login/page.tsx` — agregar link a /register**
   Dentro del card de login, debajo del botón "Entrar al dashboard" (o encima del bloque de "Demo guiada / Acceso SSO"), añadir:
   `¿No tienes cuenta? <Link href="/register">Crear cuenta →</Link>`
   Estilo: texto pequeño (`text-xs`), color `text-[#00B4DB]`, `hover:opacity-80`.
   *Resultado esperado: link visible que lleva a la página de registro.*
 
-- [ ] **T5: Prueba end-to-end del flujo completo**
+- [x] **T5: Prueba end-to-end del flujo completo**
   Crear cuenta nueva con email real → revisar que llega el email → hacer clic → llegar a `/dashboard/onboarding` → completar wizard → llegar a `/dashboard`.
   *Resultado esperado: flujo sin errores, nuevo tenant creado en Supabase.*
 
