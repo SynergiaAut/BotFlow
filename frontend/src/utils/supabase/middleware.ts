@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from 'next/server'
+﻿import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 export async function updateSession(request: NextRequest) {
@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
-    const isAuthRoute = request.nextUrl.pathname.startsWith('/login')
+    const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register')
     const isOnboardingRoute = request.nextUrl.pathname.startsWith('/dashboard/onboarding')
 
     if (!user && !isAuthRoute && request.nextUrl.pathname !== '/') {
