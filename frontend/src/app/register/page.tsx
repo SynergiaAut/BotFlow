@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { login } from "../auth/actions"
+import { signup } from "../auth/actions"
 import {
   ArrowRight,
   BarChart3,
@@ -36,23 +36,45 @@ const accessFeatures = [
   { label: "Seguridad empresarial", icon: ShieldCheck },
 ]
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#070B12]" />}>
-      <LoginExperience />
+      <RegisterExperience />
     </Suspense>
   )
 }
 
-function LoginExperience() {
+function RegisterExperience() {
   const searchParams = useSearchParams()
   const message = searchParams.get("message")
   const [isLoading, setIsLoading] = useState(false)
+  const [passwordError, setPasswordError] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  async function handleLogin(formData: FormData) {
+  async function handleSignup(formData: FormData) {
+    const password = formData.get("password") as string
+    const confirmPassword = formData.get("confirmPassword") as string
+
+    if (!password || password.length < 8) {
+      setPasswordError("La contraseña debe tener al menos 8 caracteres")
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setPasswordError("Las contraseñas no coinciden")
+      return
+    }
+
+    setPasswordError("")
     setIsLoading(true)
-    await login(formData)
-    setIsLoading(false)
+    try {
+      await signup(formData)
+    } catch (err) {
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -207,165 +229,155 @@ function LoginExperience() {
 
             <div className="relative rounded-lg bg-gradient-to-br from-white/16 via-white/5 to-[#00B4DB]/12 p-px shadow-[0_24px_90px_rgba(0,0,0,.42)]">
               <div className="rounded-lg bg-[#0B0F17]/94 p-6 backdrop-blur-xl sm:p-7 xl:p-8">
-              <div className="mb-7 flex items-start justify-between gap-4 xl:mb-8">
-                <div>
-                  <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#00B4DB]/20 bg-[#00B4DB]/8 px-3 py-1 text-[11px] font-bold uppercase text-[#9BEAFF] shadow-[inset_0_1px_0_rgba(255,255,255,.06)]">
-                    <Fingerprint className="h-3.5 w-3.5" />
-                    Acceso seguro
+                <div className="mb-7 flex items-start justify-between gap-4 xl:mb-8">
+                  <div>
+                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#00B4DB]/20 bg-[#00B4DB]/8 px-3 py-1 text-[11px] font-bold uppercase text-[#9BEAFF] shadow-[inset_0_1px_0_rgba(255,255,255,.06)]">
+                      <Fingerprint className="h-3.5 w-3.5" />
+                      Registro seguro
+                    </div>
+                    <h2 className="text-3xl font-semibold tracking-tight text-white">Crear cuenta</h2>
+                    <p className="mt-2 text-sm font-medium leading-6 text-[#8B97A8]">
+                      Regístrate para comenzar a usar la consola de Skylab.
+                    </p>
                   </div>
-                  <h2 className="text-3xl font-semibold tracking-tight text-white">Inicia sesion</h2>
-                  <p className="mt-2 text-sm font-medium leading-6 text-[#8B97A8]">
-                    Entra al panel operativo de Skylab Human Bot.
-                  </p>
-                </div>
-                <div className="hidden items-center justify-center sm:flex">
-                  <Image
-                    src="/brand/skylab-symbol-transparent.png"
-                    alt="Skylab"
-                    width={300}
-                    height={145}
-                    className="h-auto w-16 object-contain opacity-90 drop-shadow-[0_0_24px_rgba(0,180,219,.18)] mix-blend-screen"
-                  />
-                </div>
-              </div>
-
-              <form className="space-y-4 xl:space-y-5">
-                <div className="space-y-2">
-                  <label htmlFor="email" className="ml-1 text-xs font-bold uppercase text-[#778397]" style={{ letterSpacing: "0.12em" }}>
-                    Correo electronico
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5E6A7D]" />
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="tu@empresa.com"
-                      required
-                      className="h-12 rounded-lg border-white/10 bg-[#0B0F17] pl-11 pr-4 text-sm font-semibold text-white placeholder:text-[#576173] focus-visible:border-[#00B4DB]/70 focus-visible:ring-[#00B4DB]/20"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="ml-1 flex items-center justify-between gap-3">
-                    <label htmlFor="password" className="text-xs font-bold uppercase text-[#778397]" style={{ letterSpacing: "0.12em" }}>
-                      Contrasena
-                    </label>
-                    <Link href="#" className="text-xs font-bold text-[#00B4DB] transition-opacity hover:opacity-80">
-                      Recuperar acceso
-                    </Link>
-                  </div>
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5E6A7D]" />
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      placeholder="Ingresa tu clave"
-                      required
-                      className="h-12 rounded-lg border-white/10 bg-[#0B0F17] pl-11 pr-12 text-sm font-semibold text-white placeholder:text-[#576173] focus-visible:border-[#00B4DB]/70 focus-visible:ring-[#00B4DB]/20"
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-[#6D788A] transition-colors hover:bg-white/[0.05] hover:text-white"
-                      aria-label="Mostrar contrasena"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-[#94A0B2]">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-white/20 bg-white/[0.05] accent-[#00B4DB]"
-                    />
-                    Recordar sesion
-                  </label>
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                    Sistema activo
-                  </div>
-                </div>
-
-                <AnimatePresence>
-                  {message && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="flex items-center gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-3 text-sm font-semibold text-red-200"
-                    >
-                      <ShieldCheck className="h-4 w-4 shrink-0" />
-                      <span>{message}</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  formAction={handleLogin}
-                  className="h-12 w-full rounded-lg bg-[#00B4DB] text-sm font-black text-[#061018] shadow-[0_16px_42px_rgba(0,180,219,.22)] transition-all hover:bg-[#26C7EA]"
-                >
-                  {isLoading ? (
-                    <>
-                      <Zap className="mr-2 h-4 w-4 animate-pulse" />
-                      Verificando acceso
-                    </>
-                  ) : (
-                    <>
-                      Entrar al dashboard
-                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/button:translate-x-1" />
-                    </>
-                  )}
-                </Button>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 rounded-lg border-white/10 bg-white/[0.025] text-xs font-bold text-[#CBD5E1] hover:bg-white/[0.06]"
-                  >
-                    <Sparkles className="mr-2 h-4 w-4 text-[#00B4DB]" />
-                    Demo guiada
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 rounded-lg border-white/10 bg-white/[0.025] text-xs font-bold text-[#CBD5E1] hover:bg-white/[0.06]"
-                  >
-                    <ShieldCheck className="mr-2 h-4 w-4 text-[#00B4DB]" />
-                    Acceso SSO
-                  </Button>
-                </div>
-              </form>
-
-              <div className="mt-6 border-t border-white/10 pt-5 xl:mt-8 xl:pt-6">
-                <div className="text-center text-xs font-semibold text-[#8B97A8] mb-4">
-                  ¿No tienes cuenta?{" "}
-                  <Link href="/register" className="text-[#00B4DB] font-bold hover:opacity-80">
-                    Crear cuenta →
-                  </Link>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#7E8A9C]">
+                  <div className="hidden items-center justify-center sm:flex">
                     <Image
-                      src="/brand/synergia-symbol-transparent.png"
-                      alt="Synerg-IA"
-                      width={420}
-                      height={290}
-                      className="h-5 w-8 object-contain object-center opacity-80 mix-blend-screen"
+                      src="/brand/skylab-symbol-transparent.png"
+                      alt="Skylab"
+                      width={300}
+                      height={145}
+                      className="h-auto w-16 object-contain opacity-90 drop-shadow-[0_0_24px_rgba(0,180,219,.18)] mix-blend-screen"
                     />
-                    Producto de Synerg-IA Automation
                   </div>
-                  <Link href="#" className="text-xs font-bold text-[#00B4DB] hover:opacity-80">
-                    Privacidad
-                  </Link>
                 </div>
-              </div>
+
+                <form className="space-y-4 xl:space-y-5">
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="ml-1 text-xs font-bold uppercase text-[#778397]" style={{ letterSpacing: "0.12em" }}>
+                      Correo electrónico
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5E6A7D]" />
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="tu@empresa.com"
+                        required
+                        className="h-12 rounded-lg border-white/10 bg-[#0B0F17] pl-11 pr-4 text-sm font-semibold text-white placeholder:text-[#576173] focus-visible:border-[#00B4DB]/70 focus-visible:ring-[#00B4DB]/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="password" className="ml-1 text-xs font-bold uppercase text-[#778397]" style={{ letterSpacing: "0.12em" }}>
+                      Contraseña
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5E6A7D]" />
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Mínimo 8 caracteres"
+                        required
+                        className="h-12 rounded-lg border-white/10 bg-[#0B0F17] pl-11 pr-12 text-sm font-semibold text-white placeholder:text-[#576173] focus-visible:border-[#00B4DB]/70 focus-visible:ring-[#00B4DB]/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-[#6D788A] transition-colors hover:bg-white/[0.05] hover:text-white"
+                        aria-label="Mostrar contraseña"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="confirmPassword" className="ml-1 text-xs font-bold uppercase text-[#778397]" style={{ letterSpacing: "0.12em" }}>
+                      Confirmar Contraseña
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5E6A7D]" />
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Repite tu contraseña"
+                        required
+                        className="h-12 rounded-lg border-white/10 bg-[#0B0F17] pl-11 pr-12 text-sm font-semibold text-white placeholder:text-[#576173] focus-visible:border-[#00B4DB]/70 focus-visible:ring-[#00B4DB]/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-[#6D788A] transition-colors hover:bg-white/[0.05] hover:text-white"
+                        aria-label="Mostrar contraseña"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {(message || passwordError) && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="flex items-center gap-3 rounded-lg border border-red-400/20 bg-red-500/10 p-3 text-sm font-semibold text-red-200"
+                      >
+                        <ShieldCheck className="h-4 w-4 shrink-0" />
+                        <span>{passwordError || message}</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    formAction={handleSignup}
+                    className="h-12 w-full rounded-lg bg-[#00B4DB] text-sm font-black text-[#061018] shadow-[0_16px_42px_rgba(0,180,219,.22)] transition-all hover:bg-[#26C7EA]"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Zap className="mr-2 h-4 w-4 animate-pulse" />
+                        Creando cuenta...
+                      </>
+                    ) : (
+                      <>
+                        Registrarse
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+
+                <div className="mt-6 border-t border-white/10 pt-5 xl:mt-8 xl:pt-6">
+                  <div className="flex flex-col gap-4">
+                    <div className="text-center text-xs font-semibold text-[#8B97A8]">
+                      ¿Ya tienes cuenta?{" "}
+                      <Link href="/login" className="text-[#00B4DB] font-bold hover:opacity-80">
+                        Inicia sesión →
+                      </Link>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-[#7E8A9C]">
+                        <Image
+                          src="/brand/synergia-symbol-transparent.png"
+                          alt="Synerg-IA"
+                          width={420}
+                          height={290}
+                          className="h-5 w-8 object-contain object-center opacity-80 mix-blend-screen"
+                        />
+                        Producto de Synerg-IA Automation
+                      </div>
+                      <Link href="#" className="text-xs font-bold text-[#00B4DB] hover:opacity-80">
+                        Privacidad
+                      </Link>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>
