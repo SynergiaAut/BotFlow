@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 
 // Inicializar el SDK GenAI de Google
 const genAI = new GoogleGenerativeAI(
@@ -39,13 +39,13 @@ export async function POST(req: Request) {
             generationConfig: {
                 responseMimeType: "application/json",
                 responseSchema: {
-                    type: "OBJECT",
+                    type: SchemaType.OBJECT,
                     properties: {
                         vertical_name: { 
-                            type: "STRING"
+                            type: SchemaType.STRING
                         },
                         system_prompt: { 
-                            type: "STRING"
+                            type: SchemaType.STRING
                         }
                     },
                     required: ["vertical_name", "system_prompt"]
