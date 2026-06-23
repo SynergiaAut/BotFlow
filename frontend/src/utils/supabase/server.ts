@@ -1,12 +1,19 @@
-import { createServerClient } from '@supabase/ssr'
+﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export async function createClient() {
     const cookieStore = await cookies()
 
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env["NEXT_PUBLIC_SUPABASE_URL"]
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env["NEXT_PUBLIC_SUPABASE_ANON_KEY"]
+
+    if (!url || !key) {
+        console.error("[FAST-ORDER-INV] Missing Supabase credentials in server.ts:", { url: !!url, key: !!key })
+    }
+
     return createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        url!,
+        key!,
         {
             cookies: {
                 getAll() {
@@ -37,7 +44,7 @@ export async function getActiveTenantId() {
     const impersonated = cookieStore.get('impersonate_tenant_id')?.value
 
     if (impersonated) {
-        // Verificar que el usuario real es super admin antes de aceptar la impersonación
+        // Verificar que el usuario real es super admin antes de aceptar la impersonacin
         const { data: superAdmin } = await supabase
             .from('super_admins')
             .select('*')
@@ -49,7 +56,7 @@ export async function getActiveTenantId() {
         }
     }
 
-    // Si no es super admin o no está impersonando, retornar su tenant normal
+    // Si no es super admin o no estǭ impersonando, retornar su tenant normal
     const { data: roleData } = await supabase
         .from('user_roles')
         .select('tenant_id')
