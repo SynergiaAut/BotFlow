@@ -74,8 +74,8 @@ export async function saveOnboardingAction(formData: any) {
                 if (tenantError) throw tenantError;
             }
 
-            // 2. Generate dynamic system prompt if templateId is provided
-            let systemPrompt = `Eres un asistente servicial para ${formData.businessName}.`;
+            // 2. Generate dynamic system prompt if templateId is provided, fallback to customSystemPrompt if set
+            let systemPrompt = formData.customSystemPrompt || `Eres un asistente servicial para ${formData.businessName}.`;
             
             if (formData.templateId) {
                 const { data: template } = await supabase
@@ -115,7 +115,8 @@ export async function saveOnboardingAction(formData: any) {
                         tone_style: formData.tone,
                         use_emojis: formData.useEmojis || 'high',
                         specialized_industry: formData.industry,
-                        system_prompt: systemPrompt
+                        system_prompt: systemPrompt,
+                        template_id: formData.templateId || null
                     })
                     .eq('id', bots[0].id);
                 if (botError) throw botError;
@@ -128,7 +129,8 @@ export async function saveOnboardingAction(formData: any) {
                         tone_style: formData.tone,
                         use_emojis: formData.useEmojis || 'high',
                         specialized_industry: formData.industry,
-                        system_prompt: systemPrompt
+                        system_prompt: systemPrompt,
+                        template_id: formData.templateId || null
                     });
                 if (botError) throw botError;
             }

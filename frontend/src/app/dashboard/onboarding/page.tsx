@@ -20,7 +20,9 @@ import {
     Zap,
     MessageSquareText,
     Cpu,
-    Atom
+    Atom,
+    Wand2,
+    Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +66,14 @@ export default function OnboardingDashboardPage() {
     // Store answers for the dynamic quick questions
     const [answers, setAnswers] = useState<Record<string, any>>({});
 
+    // Estados para la plantilla personalizada por IA
+    const [isCustomIndustry, setIsCustomIndustry] = useState(false);
+    const [customSubStep, setCustomSubStep] = useState<'select' | 'describe' | 'preview' | null>(null);
+    const [customDescription, setCustomDescription] = useState('');
+    const [customPromptGenerated, setCustomPromptGenerated] = useState('');
+    const [customVerticalName, setCustomVerticalName] = useState('');
+    const [isGeneratingTemplate, setIsGeneratingTemplate] = useState(false);
+
     useEffect(() => {
         getTemplatesAction().then(res => {
             if (res.success) setTemplates(res.data);
@@ -93,8 +103,9 @@ export default function OnboardingDashboardPage() {
         const result = (await saveOnboardingAction({
             ...formData,
             suggestedPlan: plan.id,
-            templateId: selectedTemplate?.id,
-            answers
+            templateId: isCustomIndustry ? null : selectedTemplate?.id,
+            customSystemPrompt: isCustomIndustry ? customPromptGenerated : null,
+            answers: isCustomIndustry ? {} : answers
         })) as any;
         
         setIsSaving(false);
@@ -105,6 +116,94 @@ export default function OnboardingDashboardPage() {
         } else {
             toast.error(result.error);
         }
+    };
+
+    const generateCustomTemplate = async () => {
+        if (customDescription.trim().length < 20) {
+            toast.error("Por favor ingresa una descripción más detallada (mínimo 20 caracteres).");
+            return;
+        }
+
+        setIsGeneratingTemplate(true);
+        try {
+            const response = await fetch('/api/generate-template', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ businessDescription: customDescription }),
+            });
+
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Error al generar la plantilla');
+            }
+
+            setCustomVerticalName(data.vertical_name);
+            setCustomPromptGenerated(data.system_prompt);
+            setCustomSubStep('preview');
+            toast.success("¡Plantilla generada con éxito por la IA!");
+        } catch (err: any) {
+            console.error("[FAST-ORDER-INV] Error generating custom template:", err);
+            toast.error(err.message || "Error al conectar con el servidor de generación.");
+        } finally {
+            setIsGeneratingTemplate(false);
+        }
+    };
+
+    const handleNext = async () => {
+        if (currentStep === 0) {
+            if (isCustomIndustry) {
+                if (customSubStep === 'describe') {
+                    await generateCustomTemplate();
+                } else if (customSubStep === 'preview') {
+                    setFormData(prev => ({ ...prev, industry: customVerticalName }));
+                    nextStep();
+                }
+            } else {
+                nextStep();
+            }
+        } else {
+            nextStep();
+        }
+    };
+
+    const handlePrev = () => {
+        if (currentStep === 0 && isCustomIndustry) {
+            if (customSubStep === 'describe') {
+                setIsCustomIndustry(false);
+                setCustomSubStep(null);
+                setFormData(prev => ({ ...prev, industry: '' }));
+            } else if (customSubStep === 'preview') {
+                setCustomSubStep('describe');
+            }
+        } else {
+            prevStep();
+        }
+    };
+
+    const isNextDisabled = () => {
+        if (isSaving || isGeneratingTemplate) return true;
+        if (currentStep === 0) {
+            if (isCustomIndustry) {
+                if (customSubStep === 'describe') {
+                    return customDescription.trim().length < 20;
+                }
+                if (customSubStep === 'preview') {
+                    return !customVerticalName.trim() || !customPromptGenerated.trim();
+                }
+            } else {
+                return !formData.industry;
+            }
+        }
+        return false;
+    };
+
+    const isPrevDisabled = () => {
+        if (isSaving || isGeneratingTemplate) return true;
+        if (currentStep === 0 && !isCustomIndustry) return true;
+        return false;
     };
 
     const renderBotMessage = () => {
@@ -209,54 +308,155 @@ export default function OnboardingDashboardPage() {
                                     </div>
 
                                     <div className="space-y-10 mt-12">
-                                        <div className="space-y-4 max-w-2xl mx-auto">
-                                            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2">Nombre Corporativo</Label>
-                                            <div className="relative group">
-                                                <Input
-                                                    placeholder="Ej: Inversiones Paisa"
-                                                    value={formData.businessName}
-                                                    onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                                                    className="bg-white/[0.05] border-white/10 h-16 px-8 rounded-3xl focus:ring-2 focus:ring-indigo-500/50 text-xl font-bold placeholder:text-slate-700 transition-all group-hover:bg-white/[0.08] text-center"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-6">
-                                            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2 text-center block">Selecciona tu Plantilla Maestra</Label>
-                                            {isLoadingTemplates ? (
-                                                <div className="h-48 flex items-center justify-center">
-                                                    <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                                        {(!isCustomIndustry || customSubStep === null) && (
+                                            <div className="space-y-4 max-w-2xl mx-auto">
+                                                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2">Nombre Corporativo</Label>
+                                                <div className="relative group">
+                                                    <Input
+                                                        placeholder="Ej: Inversiones Paisa"
+                                                        value={formData.businessName}
+                                                        onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                                                        className="bg-white/[0.05] border-white/10 h-16 px-8 rounded-3xl focus:ring-2 focus:ring-indigo-500/50 text-xl font-bold placeholder:text-slate-700 transition-all group-hover:bg-white/[0.08] text-center"
+                                                    />
                                                 </div>
-                                            ) : (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                                    {templates.map((tpl) => (
+                                            </div>
+                                        )}
+
+                                        {/* Flujo Normal de Selección */}
+                                        {(!isCustomIndustry || customSubStep === null) && (
+                                            <div className="space-y-6">
+                                                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2 text-center block">Selecciona tu Plantilla Maestra</Label>
+                                                {isLoadingTemplates ? (
+                                                    <div className="h-48 flex items-center justify-center">
+                                                        <div className="w-8 h-8 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                        {templates.map((tpl) => (
+                                                            <motion.button
+                                                                key={tpl.id}
+                                                                whileHover={{ scale: 1.02 }}
+                                                                whileTap={{ scale: 0.98 }}
+                                                                onClick={() => {
+                                                                    setIsCustomIndustry(false);
+                                                                    setFormData({ ...formData, industry: tpl.vertical_name });
+                                                                }}
+                                                                className={`p-6 rounded-[28px] border text-left transition-all ${
+                                                                    !isCustomIndustry && formData.industry === tpl.vertical_name 
+                                                                    ? 'bg-indigo-600/20 border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.2)]' 
+                                                                    : 'bg-white/[0.05] border-white/10 hover:bg-white/10 hover:border-white/20'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-center gap-4 mb-4">
+                                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${!isCustomIndustry && formData.industry === tpl.vertical_name ? 'bg-indigo-500 text-white' : 'bg-white/10 text-slate-400'}`}>
+                                                                        {renderIcon(tpl.vertical_icon, 'w-6 h-6')}
+                                                                    </div>
+                                                                    <h3 className={`font-bold text-lg ${!isCustomIndustry && formData.industry === tpl.vertical_name ? 'text-white' : 'text-slate-300'}`}>
+                                                                        {tpl.vertical_name}
+                                                                    </h3>
+                                                                </div>
+                                                                <p className="text-sm font-medium text-slate-400 line-clamp-3 leading-relaxed">
+                                                                    {tpl.description}
+                                                                </p>
+                                                            </motion.button>
+                                                        ))}
+                                                        
+                                                        {/* Card Especial: Plantilla Personalizada */}
                                                         <motion.button
-                                                            key={tpl.id}
+                                                            key="custom-vertical-card"
                                                             whileHover={{ scale: 1.02 }}
                                                             whileTap={{ scale: 0.98 }}
-                                                            onClick={() => setFormData({ ...formData, industry: tpl.vertical_name })}
-                                                            className={`p-6 rounded-[28px] border text-left transition-all ${
-                                                                formData.industry === tpl.vertical_name 
-                                                                ? 'bg-indigo-600/20 border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.2)]' 
-                                                                : 'bg-white/[0.05] border-white/10 hover:bg-white/10 hover:border-white/20'
+                                                            onClick={() => {
+                                                                setFormData({ ...formData, industry: 'Personalizada' });
+                                                                setIsCustomIndustry(true);
+                                                                setCustomSubStep('describe');
+                                                            }}
+                                                            className={`p-6 rounded-[28px] border text-left transition-all border-dashed ${
+                                                                isCustomIndustry 
+                                                                ? 'bg-indigo-600/20 border-cyan-400 shadow-[0_0_30px_rgba(6,182,212,0.2)]' 
+                                                                : 'bg-white/[0.03] border-cyan-500/20 hover:bg-cyan-500/5 hover:border-cyan-500/40'
                                                             }`}
                                                         >
                                                             <div className="flex items-center gap-4 mb-4">
-                                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${formData.industry === tpl.vertical_name ? 'bg-indigo-500 text-white' : 'bg-white/10 text-slate-400'}`}>
-                                                                    {renderIcon(tpl.vertical_icon, 'w-6 h-6')}
+                                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isCustomIndustry ? 'bg-cyan-500 text-white' : 'bg-white/10 text-cyan-400'}`}>
+                                                                    <Wand2 className="w-6 h-6 animate-pulse" />
                                                                 </div>
-                                                                <h3 className={`font-bold text-lg ${formData.industry === tpl.vertical_name ? 'text-white' : 'text-slate-300'}`}>
-                                                                    {tpl.vertical_name}
+                                                                <h3 className={`font-bold text-lg ${isCustomIndustry ? 'text-white' : 'text-slate-300'}`}>
+                                                                    Personalizada...
                                                                 </h3>
                                                             </div>
-                                                            <p className="text-sm font-medium text-slate-400 line-clamp-3 leading-relaxed">
-                                                                {tpl.description}
+                                                            <p className="text-sm font-medium text-slate-400 leading-relaxed">
+                                                                ¿Tu negocio no encaja en las plantillas? Diseña una a tu medida con inteligencia artificial.
                                                             </p>
                                                         </motion.button>
-                                                    ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Sub-paso: Describir Negocio */}
+                                        {isCustomIndustry && customSubStep === 'describe' && (
+                                            <div className="space-y-6 max-w-2xl mx-auto">
+                                                <div className="bg-cyan-950/20 border border-cyan-500/20 rounded-[32px] p-6 flex gap-4 items-start relative overflow-hidden">
+                                                    <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-500/10 blur-xl rounded-full" />
+                                                    <Sparkles className="w-6 h-6 text-cyan-400 shrink-0 mt-1" />
+                                                    <div className="space-y-1 relative z-10">
+                                                        <h4 className="text-sm font-bold text-white tracking-wide">Generador de Plantillas con IA</h4>
+                                                        <p className="text-xs text-slate-400 leading-relaxed">
+                                                            Describe qué hace tu negocio, qué vendes y a quién. Nuestra IA generará un nombre de vertical apropiado y un prompt de sistema completo y estructurado para tu chatbot.
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                            )}
-                                        </div>
+
+                                                <div className="space-y-3">
+                                                    <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2">Descripción del Negocio (Mínimo 20 caracteres)</Label>
+                                                    <textarea
+                                                        placeholder="Ej: Tengo una tienda en línea que vende plantas exóticas de interior y macetas hechas a mano. Hago envíos a toda Colombia y mi objetivo es responder dudas sobre cuidados y cerrar ventas por WhatsApp."
+                                                        value={customDescription}
+                                                        onChange={(e) => setCustomDescription(e.target.value)}
+                                                        className="w-full bg-white/[0.05] border border-white/10 rounded-3xl p-6 text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 min-h-[160px] text-lg font-medium leading-relaxed resize-none"
+                                                    />
+                                                    <div className="text-right text-[10px] text-slate-500 font-bold uppercase tracking-widest mr-2">
+                                                        {customDescription.length} caracteres
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Sub-paso: Preview y Edición de Plantilla */}
+                                        {isCustomIndustry && customSubStep === 'preview' && (
+                                            <div className="space-y-8 max-w-3xl mx-auto">
+                                                <div className="bg-indigo-950/20 border border-indigo-500/20 rounded-[32px] p-6 flex gap-4 items-start relative overflow-hidden">
+                                                    <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/10 blur-xl rounded-full" />
+                                                    <Sparkles className="w-6 h-6 text-indigo-400 shrink-0 mt-1" />
+                                                    <div className="space-y-1 relative z-10">
+                                                        <h4 className="text-sm font-bold text-white tracking-wide">Plantilla Creada Exitosamente</h4>
+                                                        <p className="text-xs text-slate-400 leading-relaxed">
+                                                            Hemos generado el prompt de sistema. Puedes revisar el nombre del nicho y ajustar las instrucciones antes de continuar.
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 gap-6">
+                                                    <div className="space-y-3">
+                                                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2">Nombre del Nicho Generado</Label>
+                                                        <Input
+                                                            value={customVerticalName}
+                                                            onChange={(e) => setCustomVerticalName(e.target.value)}
+                                                            className="bg-white/[0.05] border-white/10 h-14 px-6 rounded-2xl focus:ring-2 focus:ring-indigo-500/50 text-md font-bold"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <Label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] ml-2">Prompt de Sistema del Bot (Editable)</Label>
+                                                        <textarea
+                                                            value={customPromptGenerated}
+                                                            onChange={(e) => setCustomPromptGenerated(e.target.value)}
+                                                            className="w-full bg-white/[0.05] border border-white/10 rounded-2xl p-6 text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[300px] text-sm font-medium leading-relaxed font-mono resize-y"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -319,7 +519,7 @@ export default function OnboardingDashboardPage() {
                                             <Sparkles className="w-4 h-4" /> Paso 03 / 04
                                         </div>
                                         <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-white">Esencia Molecular</h2>
-                                        <p className="text-slate-400 text-lg font-medium">Define la personalidad IA y personaliza tu plantilla <span className="text-indigo-400">{selectedTemplate?.vertical_name}</span>.</p>
+                                        <p className="text-slate-400 text-lg font-medium">Define la personalidad IA y personaliza tu plantilla <span className="text-indigo-400">{selectedTemplate?.vertical_name || formData.industry}</span>.</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start mt-12">
@@ -537,8 +737,8 @@ export default function OnboardingDashboardPage() {
                             <div className="flex justify-between items-center pt-16 mt-16 border-t border-white/5 w-full relative z-20">
                                 <Button
                                     variant="ghost"
-                                    onClick={prevStep}
-                                    disabled={currentStep === 0 || isSaving}
+                                    onClick={handlePrev}
+                                    disabled={isPrevDisabled()}
                                     className="text-slate-500 hover:text-white font-black uppercase tracking-[0.3em] text-[10px] h-14 px-8 rounded-2xl gap-3 disabled:opacity-0 transition-all hover:bg-white/[0.05]"
                                 >
                                     <ArrowLeft className="w-4 h-4" /> Atrás
@@ -546,11 +746,20 @@ export default function OnboardingDashboardPage() {
 
                                 {currentStep < 3 && (
                                     <Button
-                                        onClick={nextStep}
-                                        disabled={currentStep === 0 && !formData.industry}
+                                        onClick={handleNext}
+                                        disabled={isNextDisabled()}
                                         className="bg-indigo-600 hover:bg-indigo-500 text-white h-16 px-12 rounded-[24px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-indigo-900/40 gap-4 group transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed"
                                     >
-                                        Siguiente <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                        {isGeneratingTemplate ? (
+                                            <div className="flex items-center gap-2">
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                Generando...
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-4">
+                                                Siguiente <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                            </div>
+                                        )}
                                     </Button>
                                 )}
                             </div>
