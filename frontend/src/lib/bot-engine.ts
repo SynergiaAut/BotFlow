@@ -147,8 +147,8 @@ export async function processBotMessage(
 
             // Inyectar Catálogo Optimizado
             const { data: products } = await supabase
-                .from('products')
-                .select('name, description, price, image_url')
+                .from('catalog_items')
+                .select('nombre, descripcion, precio, imagen_url')
                 .or(`bot_id.is.null,bot_id.eq.${botId}`);
 
             if (products && products.length > 0) {
@@ -160,9 +160,9 @@ export async function processBotMessage(
 
                 let catalogStr = "\n--- 🛒 DETALLE DEL CATÁLOGO (Usa estas URLs para fotos o info) ---\n";
                 products.forEach(p => {
-                    let fullImageUrl = p.image_url;
+                    let fullImageUrl = p.imagen_url;
                     if (fullImageUrl && !fullImageUrl.startsWith('http')) {
-                        const { data } = supabase.storage.from('products').getPublicUrl(fullImageUrl);
+                        const { data } = supabase.storage.from('catalog-images').getPublicUrl(fullImageUrl);
                         fullImageUrl = data.publicUrl;
                     }
 
@@ -170,7 +170,7 @@ export async function processBotMessage(
                     const isImage = fullImageUrl && /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(fullImageUrl.split('?')[0]);
                     const formatPrefix = isImage ? "URL_FOTO" : "LINK_INFO";
 
-                    catalogStr += `- [Otros] ${p.name}: ${copsFormatter.format(p.price)} - ${p.description || ''} (${formatPrefix}: ${fullImageUrl || 'N/A'})\n`;
+                    catalogStr += `- [Otros] ${p.nombre}: ${copsFormatter.format(p.precio)} - ${p.descripcion || ''} (${formatPrefix}: ${fullImageUrl || 'N/A'})\n`;
                 });
                 ragContext += catalogStr + "\n";
             }

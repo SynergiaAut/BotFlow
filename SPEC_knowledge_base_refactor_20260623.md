@@ -147,7 +147,7 @@ CREATE TABLE public.catalog_items (
   precio NUMERIC(12, 0) NOT NULL DEFAULT 0,
   descripcion TEXT,
   imagen_url TEXT,
-  embedding VECTOR(768),
+  embedding VECTOR(3072),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
