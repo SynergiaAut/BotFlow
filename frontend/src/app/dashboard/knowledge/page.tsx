@@ -5,9 +5,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Search, Plus, Bot, Sparkles, UploadCloud, Link as LinkIcon, FileText, Database, X, ShoppingBag, ImageIcon, Loader2, Globe, Tag, ShieldCheck, TrendingUp, Cpu, Zap, Command, Trash2, Clock, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { getKnowledgeStats, addProductAction, getProductsAction } from '@/app/actions/knowledge'
+import { getKnowledgeStats } from '@/app/actions/knowledge'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { extractTextFromPdf } from '@/utils/pdf-extractor'
+import CatalogGrid from '@/components/knowledge/CatalogGrid'
 
 type TabValue = 'text' | 'web' | 'pdf' | 'catalog';
 
@@ -141,7 +143,7 @@ export default function KnowledgeBasePage() {
                             {activeTab === 'text' && <TextIngestForm selectedBot={selectedBot} onRefresh={fetchStats} />}
                             {activeTab === 'web' && <WebScraperForm selectedBot={selectedBot} onRefresh={fetchStats} />}
                             {activeTab === 'pdf' && <PdfUploadForm selectedBot={selectedBot} onRefresh={fetchStats} />}
-                            {activeTab === 'catalog' && <CatalogProductForm selectedBot={selectedBot} onRefresh={fetchStats} />}
+                            {activeTab === 'catalog' && <CatalogGrid botId={selectedBot} onRefresh={fetchStats} />}
                         </div>
                     </div>
 
@@ -337,12 +339,46 @@ function PdfUploadForm({ selectedBot, onRefresh }: any) {
         if (!file) return
         setLoading(true)
         try {
-            const formData = new FormData(); formData.append('file', file); formData.append('botId', selectedBot)
-            const res = await fetch('/api/ingest/pdf', { method: 'POST', body: formData })
-            if (!res.ok) throw new Error('Error PDF')
-            toast.success('PDF Sincronizado.')
-            setFile(null); if (onRefresh) onRefresh()
-        } catch (err: any) { toast.error(err.message) } finally { setLoading(false) }
+            toast('Intentando extraer texto localmente...')
+            const extractedText = await extractTextFromPdf(file)
+            
+            if (extractedText && extractedText.length >= 100) {
+                toast('Texto extraído con éxito localmente. Sincronizando...')
+                const res = await fetch('/api/ingest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: file.name,
+                        content: extractedText,
+                        type: 'text',
+                        botId: selectedBot
+                    })
+                })
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error || 'Error al guardar el texto del PDF')
+                toast.success(`PDF Sincronizado localmente. ${data.chunksProcessed} vectores creados.`)
+            } else {
+                toast('Procesando PDF en el servidor...')
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('botId', selectedBot)
+                
+                const res = await fetch('/api/ingest/pdf', {
+                    method: 'POST',
+                    body: formData
+                })
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error || 'Error en servidor al procesar el PDF')
+                toast.success(`PDF Sincronizado en el servidor. ${data.chunksProcessed} vectores creados.`)
+            }
+            setFile(null)
+            if (onRefresh) onRefresh()
+        } catch (err: any) {
+            console.error('[PDF-UPLOAD] Error:', err)
+            toast.error(err.message || 'Error al procesar el archivo PDF')
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -354,59 +390,13 @@ function PdfUploadForm({ selectedBot, onRefresh }: any) {
                 </div>
                 <h3 className="text-xl font-extrabold text-white tracking-tight">{file ? file.name : 'Subir Documento (PDF)'}</h3>
                 {file && !loading && (
-                    <Button onClick={e => { e.stopPropagation(); handleUpload() }} className="mt-6 w-full lg:w-max bg-[#00B4DB] hover:bg-[#26C7EA] text-white px-8 h-11 rounded-xl font-bold text-[13px] shadow-sm transform active:scale-95 transition-all">Iniciar Mapeo</Button>
+                    <Button onClick={e => { e.stopPropagation(); handleUpload() }} className="mt-6 w-full lg:w-max bg-[#00B4DB] hover:bg-[#26C7EA] text-white px-8 h-11 rounded-xl font-bold text-[13px] shadow-sm transform active:scale-95 transition-all">
+                        Iniciar Mapeo
+                    </Button>
                 )}
             </div>
         </div>
     )
 }
 
-function CatalogProductForm({ selectedBot, onRefresh }: any) {
-    const [name, setName] = useState('')
-    const [price, setPrice] = useState('')
-    const [imageFile, setImageFile] = useState<File | null>(null)
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-    const [loading, setLoading] = useState(false)
-    const [products, setProducts] = useState<any[]>([])
-    const fileInputRef = useRef<HTMLInputElement>(null)
 
-    const fetchProducts = useCallback(async () => {
-        const res = await getProductsAction(selectedBot)
-        if (res.success && res.products) setProducts(res.products)
-    }, [selectedBot])
-
-    useEffect(() => { fetchProducts() }, [fetchProducts])
-
-    return (
-        <div className="space-y-10 animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                    <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre del Producto" className="h-12 bg-[#0B0F17] border-white/10 rounded-xl px-4 font-semibold text-sm shadow-sm focus-visible:ring-[#00B4DB]/20 focus-visible:border-[#00B4DB]/70/20" />
-                    <Input value={price} onChange={e => setPrice(e.target.value)} placeholder="Precio (COP)" className="h-12 bg-[#0B0F17] border-white/10 rounded-xl px-4 font-semibold text-sm shadow-sm focus-visible:ring-[#00B4DB]/20 focus-visible:border-[#00B4DB]/70/20" />
-                    <Button className="w-full bg-slate-900 hover:bg-slate-800 text-white h-12 rounded-xl font-bold text-[13px] shadow-sm transition-all focus:ring-4 focus:ring-slate-900/20">Registrar para RAG Visual</Button>
-                </div>
-                <div onClick={() => !loading && fileInputRef.current?.click()} className="aspect-video border-2 border-dashed border-slate-300 rounded-[20px] flex flex-col items-center justify-center bg-[#0B0F17] cursor-pointer hover:border-blue-400 hover:bg-[#0B0F17] overflow-hidden relative group transition-all">
-                    <input type="file" ref={fileInputRef} className="hidden" onChange={e => { if (e.target.files && e.target.files[0]) { setImageFile(e.target.files[0]); setPreviewUrl(URL.createObjectURL(e.target.files[0])) } }} />
-                    {previewUrl ? <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-[#7E8A9C]" />}
-                </div>
-            </div>
-
-            <div className="pt-8 border-t border-white/10">
-                <h3 className="text-[13px] font-bold text-white mb-6 flex items-center gap-2">
-                    <ShoppingBag className="w-4 h-4 text-[#7E8A9C]" /> Inventario Inteligente
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {products.map(p => (
-                        <div key={p.id} className="aspect-square bg-[#0B0F17] border border-white/10 rounded-2xl p-1 relative group overflow-hidden shadow-sm">
-                            <img src={p.image_url} alt={p.name} className="w-full h-full object-cover rounded-[12px] group-hover:scale-110 transition-transform duration-500" />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl">
-                                <Trash2 className="w-5 h-5 text-white hover:text-rose-500 cursor-pointer" />
-                            </div>
-                        </div>
-                    ))}
-                    {products.length === 0 && <div className="aspect-square border-2 border-dashed border-white/10 rounded-2xl flex items-center justify-center text-[#7E8A9C]"><Plus className="w-8 h-8" /></div>}
-                </div>
-            </div>
-        </div>
-    )
-}

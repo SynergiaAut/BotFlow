@@ -13,13 +13,13 @@ export async function getKnowledgeStats(botId: string = 'all') {
         let vectorsCount = 0;
 
         // 0. Contar Productos Multimodales
-        let queryProducts = supabase.from('products').select('id', { count: 'exact', head: true })
+        let queryProducts = supabase.from('catalog_items').select('id', { count: 'exact', head: true })
         if (botId !== 'all') queryProducts = queryProducts.eq('bot_id', botId)
 
         const { count: pCount, error: pError } = await queryProducts
         if (!pError && pCount !== null) productsCount = pCount
 
-        // 1. Contar documentos por tipo (Texto vs Web)
+        // 1. Contar documentos por tipo (Texto vs Web vs PDF)
         let queryDocs = supabase.from('knowledge_docs').select('source_type', { count: 'exact', head: false })
 
         if (botId !== 'all') {
@@ -30,7 +30,7 @@ export async function getKnowledgeStats(botId: string = 'all') {
 
         if (!docsError && docsData) {
             textDocsCount = docsData.filter(d => d.source_type === 'text').length
-            urlDocsCount = docsData.filter(d => d.source_type === 'url' || d.source_type === 'web').length // As web or url
+            urlDocsCount = docsData.filter(d => d.source_type === 'url' || d.source_type === 'web' || d.source_type === 'pdf').length
         }
 
         // 2. Contar Vectores Totales (chunks)
@@ -92,7 +92,7 @@ export async function addProductAction(formData: FormData) {
         const fileName = `${tenantId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
 
         const { error: uploadError } = await supabase.storage
-            .from('products')
+            .from('catalog-images')
             .upload(fileName, imageFile, {
                 cacheControl: '3600',
                 upsert: false
@@ -102,16 +102,16 @@ export async function addProductAction(formData: FormData) {
             throw new Error(`Error subiendo la fotografía: ${uploadError.message}`)
         }
 
-        const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(fileName)
+        const { data: { publicUrl } } = supabase.storage.from('catalog-images').getPublicUrl(fileName)
 
         // 2. Guardar producto en la base de datos SQL
-        const { error: insertError } = await supabase.from('products').insert({
+        const { error: insertError } = await supabase.from('catalog_items').insert({
             tenant_id: tenantId,
             bot_id: botId === 'all' ? null : botId,
-            name: name,
-            description: description || null,
-            price: purePrice,
-            image_url: publicUrl
+            nombre: name,
+            descripcion: description || null,
+            precio: purePrice,
+            imagen_url: publicUrl
         })
 
         if (insertError) {
@@ -141,7 +141,7 @@ export async function getProductsAction(botId: string = 'all') {
         if (tenantError || !tenantData) throw new Error("No se encontró un espacio de trabajo activo.")
 
         let query = supabase
-            .from('products')
+            .from('catalog_items')
             .select('*')
             .eq('tenant_id', tenantData.tenant_id)
             .order('created_at', { ascending: false })
@@ -156,7 +156,19 @@ export async function getProductsAction(botId: string = 'all') {
             throw new Error(error.message)
         }
 
-        return { success: true, products: data }
+        // Mapear campos antiguos para retrocompatibilidad
+        const productsMapped = (data || []).map(item => ({
+            id: item.id,
+            tenant_id: item.tenant_id,
+            bot_id: item.bot_id,
+            name: item.nombre,
+            description: item.descripcion,
+            price: item.precio,
+            image_url: item.imagen_url,
+            created_at: item.created_at
+        }))
+
+        return { success: true, products: productsMapped }
     } catch (e: any) {
         return { success: false, error: e.message }
     }

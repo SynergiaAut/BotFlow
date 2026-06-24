@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { PDFParse } from 'pdf-parse'
 
 // Inicializar el SDK GenAI de Google
 const genAI = new GoogleGenerativeAI((process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY) as string)
@@ -99,28 +100,27 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Error BD', details: docError.message }, { status: 500 })
         }
 
-        // 4. Convertir PDF a Texto usando Gemini 1.5 Flash (OCR Premium con directrices de confidencialidad)
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+        // 4. Convertir PDF a Texto usando PDFParse (sin IA en el servidor)
         const arrayBuffer = await file.arrayBuffer()
-        const base64Data = Buffer.from(arrayBuffer).toString('base64')
+        const buffer = Buffer.from(arrayBuffer)
 
-        const prompt = "Actúa como un extractor de texto OCR premium de alta seguridad. Extrae todo el contenido de este PDF de forma estructurada. Ignora encabezados y pies de página repetitivos. IMPORTANTE: Por seguridad y confidencialidad, si encuentras credenciales, llaves de API, contraseñas en texto plano o números de tarjetas de crédito, no los extraigas y reemplázalos por la etiqueta [DATOS REMOVIDOS POR CONFIDENCIALIDAD]. Devuelve solo el texto limpio."
-
-        const result = await model.generateContent([
-            {
-                inlineData: {
-                    data: base64Data,
-                    mimeType: "application/pdf"
-                }
-            },
-            prompt
-        ])
-
-        const extractedText = result.response.text()
-
-        if (!extractedText || extractedText.length < 50) {
+        let extractedText = ''
+        try {
+            const parser = new PDFParse({ data: buffer })
+            const textResult = await parser.getText()
+            extractedText = textResult.text || ''
+            await parser.destroy()
+        } catch (err: any) {
+            console.error('[PDF-PARSE] Error parsing PDF on server:', err)
             await supabase.from('knowledge_docs').update({ status: 'error' }).eq('id', doc.id)
-            return NextResponse.json({ error: 'Gemini no pudo extraer suficiente texto del PDF' }, { status: 500 })
+            return NextResponse.json({ error: 'Error al procesar el archivo PDF en el servidor.', details: err.message }, { status: 500 })
+        }
+
+        if (!extractedText || extractedText.trim().length < 100) {
+            await supabase.from('knowledge_docs').update({ status: 'error' }).eq('id', doc.id)
+            return NextResponse.json({ 
+                error: 'Este PDF es una imagen escaneada o no tiene texto extraíble. Por favor, cópialo como texto y usa la pestaña Texto Puro.' 
+            }, { status: 400 })
         }
 
         // 4.1 Sanitizar por segunda vez en el backend
