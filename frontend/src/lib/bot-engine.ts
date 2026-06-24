@@ -349,6 +349,65 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
     }
 
     console.error(`❌ Todos los modelos de IA fallaron. Último error:`, lastError?.message);
+
+    // Fallback de contingencia a Claude Haiku (Anthropic API) si está la API key configurada
+    if (process.env.ANTHROPIC_API_KEY) {
+        console.log('[FAST-ORDER-INV] Intentando fallback con Claude 3.5 Haiku...');
+        try {
+            const formattedMessages: any[] = [];
+            for (const m of contextMessages) {
+                const role = m.role === 'user' ? 'user' : 'assistant';
+                if (formattedMessages.length > 0 && formattedMessages[formattedMessages.length - 1].role === role) {
+                    formattedMessages[formattedMessages.length - 1].content += "\n\n" + (m.content || '');
+                } else {
+                    formattedMessages.push({ role, content: m.content || '(vacío)' });
+                }
+            }
+            if (formattedMessages.length > 0 && formattedMessages[0].role === 'assistant') {
+                formattedMessages.shift();
+            }
+            if (formattedMessages.length === 0) {
+                formattedMessages.push({ role: 'user', content: 'Hola' });
+            }
+
+            const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'x-api-key': process.env.ANTHROPIC_API_KEY,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'claude-3-5-haiku-20241022',
+                    max_tokens: 1024,
+                    system: promptWrapper,
+                    messages: formattedMessages
+                })
+            });
+
+            if (claudeRes.ok) {
+                const claudeData = await claudeRes.json();
+                const claudeText = claudeData.content[0].text;
+                const { cleanedContent } = extractLeadAction(claudeText, actualContactId, supabase);
+
+                // Persistir mensaje del asistente
+                await supabase.from('messages').insert({
+                    tenant_id: tenantId,
+                    conversation_id: conversationId,
+                    role: 'assistant',
+                    content: cleanedContent
+                });
+
+                return { text: cleanedContent, conversationId };
+            } else {
+                const errText = await claudeRes.text();
+                console.error('[FAST-ORDER-INV] Claude API error:', errText);
+            }
+        } catch (claudeError) {
+            console.error('[FAST-ORDER-INV] Fallback con Claude falló:', claudeError);
+        }
+    }
+
     const fallbackText = "Lo siento, tuve un pequeño inconveniente técnico. ¿Podrías repetirme eso por favor? 🙏";
     return { text: fallbackText, conversationId };
 }
