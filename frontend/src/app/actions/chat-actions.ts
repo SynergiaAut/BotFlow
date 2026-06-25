@@ -64,27 +64,39 @@ export async function resetTestConversation(botId: string) {
     const tenantId = roleData?.tenant_id
     if (!tenantId) return { success: false, error: "Tenant no encontrado" }
 
-    // Buscar una conversación existente para este bot
-    const { data: existingConv } = await supabase
+    // 1. Resetear el estado de autorización de datos (Habeas Data) y campos del contacto de prueba
+    await supabase
+        .from('contacts')
+        .update({ 
+            data_authorized: false,
+            name: user.email || 'Test User',
+            email: null,
+            phone_number: null
+        })
+        .eq('tenant_id', tenantId)
+        .eq('platform_id', user.id);
+
+    // 2. Buscar todas las conversaciones asociadas a este bot y tenant de prueba
+    const { data: conversations } = await supabase
         .from('conversations')
         .select('id')
         .eq('bot_id', botId)
-        .eq('tenant_id', tenantId)
-        .limit(1)
-        .single()
+        .eq('tenant_id', tenantId);
 
-    if (!existingConv) {
-        return { success: true } // Nada que borrar
-    }
+    if (conversations && conversations.length > 0) {
+        const convIds = conversations.map(c => c.id);
 
-    // Borrar todos los mensajes asociados a esta conversación
-    const { error } = await supabase
-        .from('messages')
-        .delete()
-        .eq('conversation_id', existingConv.id)
+        // Borrar todos los mensajes asociados a estas conversaciones
+        await supabase
+            .from('messages')
+            .delete()
+            .in('conversation_id', convIds);
 
-    if (error) {
-        return { success: false, error: error.message }
+        // Borrar las conversaciones de la base de datos
+        await supabase
+            .from('conversations')
+            .delete()
+            .in('id', convIds);
     }
 
     return { success: true }

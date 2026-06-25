@@ -38,7 +38,8 @@ export async function POST(req: Request) {
             botId,
             messages,
             channel: 'web',
-            platformId: user.id
+            platformId: user.id,
+            isTest: true
         });
 
         // Respuesta estructurada para humanización (si hay fragmentos)
