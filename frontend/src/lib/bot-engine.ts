@@ -144,39 +144,43 @@ export async function processBotMessage(
             if (matchedChunks && matchedChunks.length > 0) {
                 ragContext = matchedChunks.map((chunk: any) => chunk.content).join('\n\n');
             }
-
-            // Inyectar Catálogo Optimizado
-            const { data: products } = await supabase
-                .from('catalog_items')
-                .select('nombre, descripcion, precio, imagen_url')
-                .or(`bot_id.is.null,bot_id.eq.${botId}`);
-
-            if (products && products.length > 0) {
-                const copsFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
-
-                // Agrupar por categorías para que la IA entienda la estructura
-                const categories = Array.from(new Set(products.map(() => 'Otros')));
-                ragContext += `\n--- 📂 CATEGORÍAS DISPONIBLES ---\n${categories.join(', ')}\n`;
-
-                let catalogStr = "\n--- 🛒 DETALLE DEL CATÁLOGO (Usa estas URLs para fotos o info) ---\n";
-                products.forEach(p => {
-                    let fullImageUrl = p.imagen_url;
-                    if (fullImageUrl && !fullImageUrl.startsWith('http')) {
-                        const { data } = supabase.storage.from('catalog-images').getPublicUrl(fullImageUrl);
-                        fullImageUrl = data.publicUrl;
-                    }
-
-                    // Validación de si es una imagen real o un link de página
-                    const isImage = fullImageUrl && /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(fullImageUrl.split('?')[0]);
-                    const formatPrefix = isImage ? "URL_FOTO" : "LINK_INFO";
-
-                    catalogStr += `- [Otros] ${p.nombre}: ${copsFormatter.format(p.precio)} - ${p.descripcion || ''} (${formatPrefix}: ${fullImageUrl || 'N/A'})\n`;
-                });
-                ragContext += catalogStr + "\n";
-            }
         }
     } catch (e) {
         console.error("RAG logic failed:", e);
+    }
+
+    // Inyectar Catálogo Optimizado (Siempre intentar cargar de la DB, incluso si RAG falla o no hay embedding)
+    try {
+        const { data: products } = await supabase
+            .from('catalog_items')
+            .select('nombre, descripcion, precio, imagen_url')
+            .or(`bot_id.is.null,bot_id.eq.${botId}`);
+
+        if (products && products.length > 0) {
+            const copsFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
+
+            // Agrupar por categorías para que la IA entienda la estructura
+            const categories = Array.from(new Set(products.map(() => 'Otros')));
+            ragContext += `\n--- 📁 CATEGORÍAS DISPONIBLES ---\n${categories.join(', ')}\n`;
+
+            let catalogStr = "\n--- 🛒 DETALLE DEL CATÁLOGO (Usa estas URLs para fotos o info) ---\n";
+            products.forEach(p => {
+                let fullImageUrl = p.imagen_url;
+                if (fullImageUrl && !fullImageUrl.startsWith('http')) {
+                    const { data } = supabase.storage.from('catalog-images').getPublicUrl(fullImageUrl);
+                    fullImageUrl = data.publicUrl;
+                }
+
+                // Validación de si es una imagen real o un link de página
+                const isImage = fullImageUrl && /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(fullImageUrl.split('?')[0]);
+                const formatPrefix = isImage ? "URL_FOTO" : "LINK_INFO";
+
+                catalogStr += `- [Otros] ${p.nombre}: ${copsFormatter.format(p.precio)} - ${p.descripcion || ''} (${formatPrefix}: ${fullImageUrl || 'N/A'})\n`;
+            });
+            ragContext += catalogStr + "\n";
+        }
+    } catch (catalogErr) {
+        console.error("Catalog loading failed:", catalogErr);
     }
 
     // 4. Arquitectura de Memoria Híbrida (Short-term Local + Long-term DB)
@@ -237,15 +241,16 @@ export async function processBotMessage(
     const promptWrapper = `
 ERES UN ASESOR HUMANO LLAMADO ${botData?.name || "Asesor"}.
 PERSONALIDAD: ${toneInstructions}
-ESTILO: ${emojiStyle}
+ESTILOS: ${emojiStyle}
 NATURALEZA DEL NEGOCIO: ${industry}
 
 REGLAS DE ORO DE INTELIGENCIA:
-1. PRIORIDAD VISUAL: Si el usuario usa palabras como "MUÉSTRAME", "VER" o "FOTO", y el producto tiene una "URL_FOTO", DEBES enviarla usando ![Nombre](URL_FOTO).
-2. LINKS DE INFO: Si el producto tiene un "LINK_INFO" (y no URL_FOTO), entrégalo como un link normal de texto.
-3. MEMORIA: Responde a la ÚLTIMA pregunta del historial. 
-4. SALUDO: ${isFirstMessage ? 'NUEVA CHARLA: Saluda según tu personalidad.' : 'SIN RE-SALUDOS: Ya estás hablando con el cliente.'}
-5. CONCISIÓN EXTREMA: Responde de forma muy corta, resumida, directa y al grano. Evita explicaciones largas o párrafos extensos. Limita tu respuesta a un máximo de 2 o 3 oraciones por mensaje.
+1. VERACIDAD ESTRICTA (ANTI-ALUCINACIÓN): Responde única y exclusivamente con base en la información provista en 'CONTEXTO DEL NEGOCIO' y 'DETALLE DEL CATÁLOGO'. Si el usuario pregunta por un producto, plan, precio, servicio o detalle que no está explícitamente mencionado allí, indica amablemente que no dispones de esa información y sugiérele contactar al equipo de soporte o visitar la web. Queda estrictamente prohibido inventar o asumir información que no se encuentre en las fuentes provistas.
+2. PRIORIDAD VISUAL: Si el usuario usa palabras como "MUÉSTRAME", "VER" o "FOTO", y el producto tiene una "URL_FOTO", DEBES enviarla usando el formato exacto ![Nombre](URL_FOTO).
+3. LINKS DE INFO: Si el producto tiene un "LINK_INFO" (y no URL_FOTO), entrégalo como un link normal de texto.
+4. MEMORIA: Responde a la ÚLTIMA pregunta del historial. 
+5. SALUDO: \${isFirstMessage ? 'NUEVA CHARLA: Saluda según tu personalidad.' : 'SIN RE-SALUDOS: Ya estás hablando con el cliente.'}
+6. CONCISIÓN EXTREMA: Responde de forma muy corta, resumida, directa y al grano. Evita explicaciones largas o párrafos extensos. Limita tu respuesta a un máximo de 2 o 3 oraciones por mensaje.
 
 REGLAS DE CATÁLOGO:
 - SI HAY URL_FOTO: Usa el formato ![Nombre](URL_FOTO).
@@ -264,6 +269,7 @@ ${ragContext}
 ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en ayudar al cliente.`}
 `;
 
+    
     const modelsToTry = [
         'gemini-2.5-flash',
         'gemini-2.0-flash',
