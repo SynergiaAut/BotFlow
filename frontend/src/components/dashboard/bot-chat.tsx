@@ -223,7 +223,34 @@ function Bubble({ message, platform, historicalIds, avatarUrl, botName, onImageC
     const bubbleClass = cn('min-w-0 max-w-full overflow-hidden', isUser ? config.sentBubble : config.receivedBubble, zoom && 'px-4 py-3 text-[15px]')
 
     const content = message.content.replace(/[*#]/g, '')
-    const imageMatch = content.match(/^!\[(.*?)\]\((.*?)\)$/)
+    const renderMessageContent = () => {
+        const regex = /(!\[.*?\]\(.*?\))/g;
+        const parts = content.split(regex);
+
+        return parts.map((part, index) => {
+            const imageMatch = part.match(/^!\[(.*?)\]\((.*?)\)$/);
+            if (imageMatch) {
+                return (
+                    <button 
+                        key={index} 
+                        type="button" 
+                        onClick={() => onImageClick?.(imageMatch[2])} 
+                        className="mt-2 mb-1 block overflow-hidden rounded-xl border border-white/10 bg-black/20 p-1 text-left"
+                    >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imageMatch[2]} alt={imageMatch[1] || 'Imagen'} className="max-h-[240px] w-full rounded-lg object-contain" />
+                    </button>
+                );
+            } else if (part.trim() !== '') {
+                return (
+                    <p key={index} className="min-w-0 whitespace-pre-wrap break-words leading-relaxed [overflow-wrap:anywhere] [word-break:break-word]">
+                        {part}
+                    </p>
+                );
+            }
+            return null;
+        });
+    };
 
     return (
         <div className={cn('flex w-full gap-1.5', isUser ? 'justify-end' : 'justify-start')}>
@@ -232,14 +259,7 @@ function Bubble({ message, platform, historicalIds, avatarUrl, botName, onImageC
             )}
             <div className={cn('flex min-w-0 flex-col gap-0.5', zoom ? 'max-w-[88%]' : 'max-w-[82%]', isUser && 'items-end')}>
                 <div className={bubbleClass}>
-                    {imageMatch ? (
-                        <button type="button" onClick={() => onImageClick?.(imageMatch[2])} className="overflow-hidden rounded-xl border border-white/10 bg-black/20 p-1">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={imageMatch[2]} alt={imageMatch[1] || 'Imagen'} className="max-h-[240px] w-full rounded-lg object-contain" />
-                        </button>
-                    ) : (
-                        <p className="min-w-0 whitespace-pre-wrap break-words leading-relaxed [overflow-wrap:anywhere] [word-break:break-word]">{content}</p>
-                    )}
+                    {renderMessageContent()}
                 </div>
                 {isUser && <ReadReceipt platform={platform} isHistorical={historicalIds.has(message.id)} />}
             </div>
