@@ -350,9 +350,8 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
 
     console.error(`❌ Todos los modelos de IA fallaron. Último error:`, lastError?.message);
 
-    // Fallback de contingencia a Claude Haiku (Anthropic API) si está la API key configurada
+    // Fallback de contingencia a Claude (Anthropic API) si está la API key configurada
     if (process.env.ANTHROPIC_API_KEY) {
-        console.log('[FAST-ORDER-INV] Intentando fallback con Claude 3.5 Haiku...');
         try {
             const formattedMessages: any[] = [];
             for (const m of contextMessages) {
@@ -370,24 +369,46 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
                 formattedMessages.push({ role: 'user', content: 'Hola' });
             }
 
-            const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'x-api-key': process.env.ANTHROPIC_API_KEY,
-                    'anthropic-version': '2023-06-01',
-                    'content-type': 'application/json'
-                },
-                body: JSON.stringify({
-                    model: 'claude-3-5-haiku-20241022',
-                    max_tokens: 1024,
-                    system: promptWrapper,
-                    messages: formattedMessages
-                })
-            });
+            const claudeModels = [
+                'claude-3-haiku-20240307',
+                'claude-3-5-haiku-20241022',
+                'claude-3-5-sonnet-20241022',
+                'claude-3-5-sonnet-latest'
+            ];
 
-            if (claudeRes.ok) {
-                const claudeData = await claudeRes.json();
-                const claudeText = claudeData.content[0].text;
+            let claudeSuccess = false;
+            let claudeText = '';
+
+            for (const claudeModel of claudeModels) {
+                console.log(`[FAST-ORDER-INV] Intentando fallback con Claude: ${claudeModel}...`);
+                const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'x-api-key': process.env.ANTHROPIC_API_KEY,
+                        'anthropic-version': '2023-06-01',
+                        'content-type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: claudeModel,
+                        max_tokens: 1024,
+                        system: promptWrapper,
+                        messages: formattedMessages
+                    })
+                });
+
+                if (claudeRes.ok) {
+                    const claudeData = await claudeRes.json();
+                    claudeText = claudeData.content[0].text;
+                    claudeSuccess = true;
+                    console.log(`[FAST-ORDER-INV] Fallback exitoso con ${claudeModel}`);
+                    break;
+                } else {
+                    const errText = await claudeRes.text();
+                    console.error(`[FAST-ORDER-INV] Claude API error con ${claudeModel}:`, errText);
+                }
+            }
+
+            if (claudeSuccess) {
                 const { cleanedContent } = extractLeadAction(claudeText, actualContactId, supabase);
 
                 // Persistir mensaje del asistente
@@ -399,9 +420,6 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
                 });
 
                 return { text: cleanedContent, conversationId };
-            } else {
-                const errText = await claudeRes.text();
-                console.error('[FAST-ORDER-INV] Claude API error:', errText);
             }
         } catch (claudeError) {
             console.error('[FAST-ORDER-INV] Fallback con Claude falló:', claudeError);
