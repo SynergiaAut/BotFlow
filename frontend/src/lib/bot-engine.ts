@@ -50,12 +50,13 @@ export async function processBotMessage(
     // 1. Identificar o Crear Conversación
     let conversationId: string | null = null;
     let actualContactId = contactId;
+    let contactData: any = null;
 
     if (!actualContactId && platformId) {
         // Buscar contacto por su ID de plataforma (ej. celular o chat id)
         const { data: contact } = await supabase
             .from('contacts')
-            .select('id')
+            .select('id, name, phone_number, email, data_authorized')
             .eq('tenant_id', tenantId)
             .eq('channel', channel)
             .eq('platform_id', platformId)
@@ -63,6 +64,7 @@ export async function processBotMessage(
 
         if (contact) {
             actualContactId = contact.id;
+            contactData = contact;
         } else {
             // Crear contacto básico si no existe
             const { data: newContact } = await supabase
@@ -71,12 +73,21 @@ export async function processBotMessage(
                     tenant_id: tenantId,
                     channel: channel,
                     platform_id: platformId,
-                    name: channel === 'telegram' ? `User ${platformId}` : platformId
+                    name: channel === 'telegram' ? `User ${platformId}` : platformId,
+                    data_authorized: false
                 })
-                .select('id')
+                .select('id, name, phone_number, email, data_authorized')
                 .single();
             actualContactId = newContact?.id;
+            contactData = newContact;
         }
+    } else if (actualContactId) {
+        const { data: contact } = await supabase
+            .from('contacts')
+            .select('id, name, phone_number, email, data_authorized')
+            .eq('id', actualContactId)
+            .single();
+        contactData = contact;
     }
 
     if (!actualContactId) throw new Error("Contact requirement failed");
@@ -238,11 +249,32 @@ export async function processBotMessage(
         high: 'USA EMOJIS PARA DAR COLOR Y CERCANÍA (Moderado).'
     }[emojiUsage] || 'Usa emojis amigables.';
 
+    const authorizationStatus = contactData?.data_authorized ? "AUTORIZADO" : "PENDIENTE";
+    const contactName = contactData?.name && !contactData.name.startsWith('guest_') && !contactData.name.startsWith('User ') ? contactData.name : "NO_CAPTURED";
+    const contactEmail = contactData?.email ? contactData.email : "NO_CAPTURED";
+    const contactPhone = contactData?.phone_number ? contactData.phone_number : "NO_CAPTURED";
+
     const promptWrapper = `
 ERES UN ASESOR HUMANO LLAMADO ${botData?.name || "Asesor"}.
 PERSONALIDAD: ${toneInstructions}
 ESTILOS: ${emojiStyle}
 NATURALEZA DEL NEGOCIO: ${industry}
+
+ESTADO DE REGISTRO DEL CLIENTE:
+- Autorización de Datos (Habeas Data): ${authorizationStatus}
+- Nombre del Cliente: ${contactName}
+- Correo del Cliente: ${contactEmail}
+- Teléfono del Cliente: ${contactPhone}
+
+FLUJO DE INICIO OBLIGATORIO:
+1. Si la "Autorización de Datos" es "PENDIENTE":
+   - DEBES pedir al usuario su autorización de tratamiento de datos personales de forma amable pero estricta. Ejemplo: "Hola, antes de comenzar, ¿autorizas el tratamiento de tus datos personales según nuestra política de privacidad?".
+   - NO respondas a ninguna pregunta del negocio o del catálogo hasta que el usuario te autorice explícitamente ("Sí", "Acepto", "Autorizo").
+   - Si el usuario autoriza el tratamiento en su respuesta, DEBES incluir al final del mensaje el tag exacto [AUTHORIZE_ACTION] en texto plano.
+2. Si la "Autorización de Datos" es "AUTORIZADO" pero alguno de los campos Nombre, Correo o Teléfono aparece como "NO_CAPTURED":
+   - Pide amablemente los datos faltantes (Nombre, Correo y/o Teléfono/WhatsApp) antes de proceder con la asesoría comercial.
+   - Cuando te entregue los datos, DEBES incluir el tag [LEAD_ACTION: {"name": "...", "phone": "...", "email": "..."}] al final del mensaje para guardarlos.
+3. Solo si la Autorización es "AUTORIZADO" y posees los datos de contacto del cliente, puedes responder preguntas sobre los planes y productos del catálogo.
 
 REGLAS DE ORO DE INTELIGENCIA:
 1. VERACIDAD ESTRICTA (ANTI-ALUCINACIÓN): Responde única y exclusivamente con base en la información provista en 'CONTEXTO DEL NEGOCIO' y 'DETALLE DEL CATÁLOGO'. Si el usuario pregunta por un producto, plan, precio, servicio o detalle que no está explícitamente mencionado allí, indica amablemente que no dispones de esa información y sugiérele contactar al equipo de soporte o visitar la web. Queda estrictamente prohibido inventar o asumir información que no se encuentre en las fuentes provistas.
@@ -257,11 +289,8 @@ REGLAS DE CATÁLOGO:
 - SI HAY LINK_INFO: Enlace amigable.
 - LÍMITE: Máximo 3 imágenes por respuesta.
 
-CONVERTIR LEADS (PIPELINE CRM):
-Si notas que el usuario tiene intención de compra/agendamiento, pídeles educadamente su nombre y teléfono (o email).
-SI EL USUARIO REVELA ESTOS DATOS DURANTE LA CHARLA (Nombre, Teléfono o Email), es IMPERATIVO que al final de tu respuesta incluyas este bloque exacto en texto plano:
-[LEAD_ACTION: {"name": "Juan", "phone": "123456", "email": "juan@mail.com", "intent": "high"}]
-Nunca muestres este bloque como código o hables sobre él al usuario; es solo para el sistema.
+FLUJO DE CIERRE DE CONVERSACIÓN:
+- Si la conversación ha concluido (el usuario se despide, agradece, o ya se agendó la demo/cita de forma exitosa), despídete cordialmente y finaliza incluyendo el tag exacto [CLOSE_CONVERSATION_ACTION] en tu respuesta para cerrar la sesión de chat.
 
 CONTEXTO DEL NEGOCIO:
 ${ragContext}
@@ -269,8 +298,7 @@ ${ragContext}
 ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en ayudar al cliente.`}
 `;
 
-    
-    const modelsToTry = [
+        const modelsToTry = [
         'gemini-2.5-flash',
         'gemini-2.0-flash',
         'gemini-1.5-flash',
@@ -308,7 +336,7 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
                 const streamingResponse = await model.generateContentStream(googleMessages);
                 const stream = GoogleGenerativeAIStream(streamingResponse, {
                     onCompletion: async (completion: string) => {
-                        const { cleanedContent } = extractLeadAction(completion, actualContactId, supabase);
+                        const { cleanedContent } = processAssistantActions(completion, actualContactId, conversationId, supabase);
                         await supabase.from('messages').insert({
                             tenant_id: tenantId,
                             conversation_id: conversationId,
@@ -323,7 +351,7 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
                 // Modo Fraccionado o Sin Streaming
                 const result = await model.generateContent(googleMessages);
                 const fullText = result.response.text();
-                const { cleanedContent } = extractLeadAction(fullText, actualContactId, supabase);
+                const { cleanedContent } = processAssistantActions(fullText, actualContactId, conversationId, supabase);
 
                 // Persistir el mensaje completo en la base de datos de una vez
                 await supabase.from('messages').insert({
@@ -413,7 +441,7 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
             }
 
             if (claudeSuccess) {
-                const { cleanedContent } = extractLeadAction(claudeText, actualContactId, supabase);
+                const { cleanedContent } = processAssistantActions(claudeText, actualContactId, conversationId, supabase);
 
                 // Persistir mensaje del asistente
                 await supabase.from('messages').insert({
@@ -437,24 +465,40 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
 /**
  * Utilidad para extraer acciones de Lead y limpiar el contenido
  */
-function extractLeadAction(text: string, contactId: string, supabase: any) {
+function processAssistantActions(text: string, contactId: string, conversationId: string, supabase: any) {
     let cleanedContent = text;
-    const leadActionMatch = text.match(/\[LEAD_ACTION:\s*({[^}]+})\s*\]/);
 
+    // 1. Procesar AUTHORIZE_ACTION
+    if (cleanedContent.includes('[AUTHORIZE_ACTION]')) {
+        cleanedContent = cleanedContent.replace('[AUTHORIZE_ACTION]', '').trim();
+        supabase.from('contacts').update({ data_authorized: true }).eq('id', contactId).then();
+    }
+
+    // 2. Procesar CLOSE_CONVERSATION_ACTION
+    if (cleanedContent.includes('[CLOSE_CONVERSATION_ACTION]')) {
+        cleanedContent = cleanedContent.replace('[CLOSE_CONVERSATION_ACTION]', '').trim();
+        supabase.from('conversations').update({ status: 'closed' }).eq('id', conversationId).then();
+    }
+
+    // 3. Procesar LEAD_ACTION
+    const leadActionMatch = cleanedContent.match(/\[LEAD_ACTION:\s*({[^}]+})\s*\]/);
     if (leadActionMatch) {
-        cleanedContent = text.replace(leadActionMatch[0], '').trim();
+        cleanedContent = cleanedContent.replace(leadActionMatch[0], '').trim();
         try {
             const leadData = JSON.parse(leadActionMatch[1]);
-            const updateData: any = { lead_stage: 'qualified' };
+            const updateData: any = {};
             if (leadData.name) updateData.name = leadData.name;
             if (leadData.phone) updateData.phone_number = leadData.phone;
             if (leadData.email) updateData.email = leadData.email;
             
-            // Fuego y olvido para no bloquear el hilo principal
+            updateData.data_authorized = true;
+            updateData.lead_stage = 'qualified';
+
             supabase.from('contacts').update(updateData).eq('id', contactId).then();
         } catch (e) {
             console.error('Error parsing lead JSON:', e);
         }
     }
+
     return { cleanedContent };
 }
