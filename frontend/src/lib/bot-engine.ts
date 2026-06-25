@@ -35,7 +35,8 @@ export async function processBotMessage(
         channel,
         contactId,
         platformId, // Para Telegram/WhatsApp IDs
-        streamResponse = true
+        streamResponse = true,
+        isTest = false
     }: {
         tenantId: string;
         botId: string;
@@ -44,8 +45,9 @@ export async function processBotMessage(
         contactId?: string;
         platformId?: string;
         streamResponse?: boolean;
+        isTest?: boolean;
     }
-): Promise<EngineResult> {
+) {
 
     // 1. Identificar o Crear Conversación
     let conversationId: string | null = null;
@@ -105,6 +107,9 @@ export async function processBotMessage(
 
     if (conv) {
         conversationId = conv.id;
+        if (isTest) {
+            await supabase.from('conversations').update({ is_test: true }).eq('id', conversationId);
+        }
     } else {
         const { data: newConv } = await supabase
             .from('conversations')
@@ -112,14 +117,15 @@ export async function processBotMessage(
                 tenant_id: tenantId,
                 bot_id: botId,
                 contact_id: actualContactId,
-                channel: channel
+                channel: channel,
+                is_test: isTest
             })
             .select('id')
             .single();
         conversationId = newConv?.id;
     }
 
-    if (!conversationId) throw new Error("Conversation failure");
+        if (!conversationId) throw new Error("Conversation failure");
 
     // 2. Persistir el mensaje del usuario
     const lastUserMessage = messages[messages.length - 1];
