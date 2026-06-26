@@ -209,7 +209,7 @@ export async function processBotMessage(
         .eq('status', 'open')
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
     if (conv) {
         conversationId = conv.id;

@@ -23,8 +23,9 @@ export async function getTestConversationMessages(botId: string) {
         .select('id')
         .eq('bot_id', botId)
         .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
     if (!existingConv) {
         return { messages: [] }

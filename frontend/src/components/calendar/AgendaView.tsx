@@ -54,18 +54,18 @@ export default function AgendaView() {
         <div className="space-y-6">
             {/* Tarjetas de Métricas de Agenda */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="border border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950/40">
+                <Card className="border border-white/10 bg-[#0B0F17] hover:border-[#00B4DB]/20 transition-all duration-300">
                     <CardContent className="p-4 flex items-center gap-3">
-                        <div className="p-2.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-500 rounded-xl">
+                        <div className="p-2.5 bg-zinc-500/10 text-zinc-400 rounded-xl">
                             <CalendarDays className="w-5 h-5" />
                         </div>
                         <div>
                             <p className="text-[10px] text-zinc-400 font-bold uppercase">Total Citas</p>
-                            <p className="text-xl font-black text-zinc-950 dark:text-white">{stats.total}</p>
+                            <p className="text-xl font-black text-white">{stats.total}</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950/40">
+                <Card className="border border-white/10 bg-[#0B0F17] hover:border-[#00B4DB]/20 transition-all duration-300">
                     <CardContent className="p-4 flex items-center gap-3">
                         <div className="p-2.5 bg-green-500/10 text-green-500 rounded-xl">
                             <CheckCircle2 className="w-5 h-5" />
@@ -76,7 +76,7 @@ export default function AgendaView() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950/40">
+                <Card className="border border-white/10 bg-[#0B0F17] hover:border-[#00B4DB]/20 transition-all duration-300">
                     <CardContent className="p-4 flex items-center gap-3">
                         <div className="p-2.5 bg-blue-500/10 text-blue-500 rounded-xl">
                             <RefreshCcw className="w-5 h-5" />
@@ -87,7 +87,7 @@ export default function AgendaView() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950/40">
+                <Card className="border border-white/10 bg-[#0B0F17] hover:border-[#00B4DB]/20 transition-all duration-300">
                     <CardContent className="p-4 flex items-center gap-3">
                         <div className="p-2.5 bg-red-500/10 text-red-500 rounded-xl">
                             <XCircle className="w-5 h-5" />
