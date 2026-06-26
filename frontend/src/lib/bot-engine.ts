@@ -641,7 +641,7 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
 
     console.error(`❌ Todos los modelos de IA fallaron. Último error:`, lastError?.message);
 
-    // Fallback de contingencia a Claude (Anthropic API) si está la API key configurada
+        // Fallback de contingencia a Claude (Anthropic API) si está la API key configurada
     if (process.env.ANTHROPIC_API_KEY) {
         try {
             const formattedMessages: any[] = [];
@@ -668,32 +668,155 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
             let claudeSuccess = false;
             let claudeText = '';
 
-            for (const claudeModel of claudeModels) {
-                console.log(`[FAST-ORDER-INV] Intentando fallback con Claude: ${claudeModel}...`);
-                const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: {
-                        'x-api-key': process.env.ANTHROPIC_API_KEY,
-                        'anthropic-version': '2023-06-01',
-                        'content-type': 'application/json'
+            // Definición de herramientas para Claude (si tiene calendario)
+            let claudeTools: any[] = [];
+            if (hasCalendar) {
+                claudeTools = [
+                    {
+                        name: "check_availability",
+                        description: "Consulta los horarios disponibles para agendar una cita. Úsala cuando el usuario quiera saber cuándo puede agendar.",
+                        input_schema: {
+                            type: "object",
+                            properties: {
+                                date_from: { type: "string", description: "Fecha inicio en formato YYYY-MM-DD" },
+                                date_to: { type: "string", description: "Fecha fin en formato YYYY-MM-DD" }
+                            },
+                            required: ["date_from", "date_to"]
+                        }
                     },
-                    body: JSON.stringify({
-                        model: claudeModel,
-                        max_tokens: 1024,
-                        system: promptWrapper,
-                        messages: formattedMessages
-                    })
-                });
+                    {
+                        name: "create_appointment",
+                        description: "Crea una cita confirmada por el usuario. SOLO llamar después de que el usuario haya confirmado explícitamente la fecha y hora.",
+                        input_schema: {
+                            type: "object",
+                            properties: {
+                                contact_name: { type: "string" },
+                                contact_phone: { type: "string" },
+                                scheduled_at: { type: "string", description: "ISO 8601 con timezone. Ej: 2026-06-24T10:00:00-05:00" },
+                                duration_minutes: { type: "number", description: "Duración en minutos. Default: 30" },
+                                service_title: { type: "string", description: "Nombre del servicio o motivo de la cita" },
+                                notes: { type: "string", description: "Notas adicionales del cliente" }
+                            },
+                            required: ["contact_name", "scheduled_at", "service_title"]
+                        }
+                    },
+                    {
+                        name: "cancel_appointment",
+                        description: "Cancela una cita existente. SOLO si el usuario confirma que quiere cancelar.",
+                        input_schema: {
+                            type: "object",
+                            properties: {
+                                appointment_id: { type: "string" },
+                                reason: { type: "string" }
+                            },
+                            required: ["appointment_id"]
+                        }
+                    }
+                ];
+            }
 
-                if (claudeRes.ok) {
-                    const claudeData = await claudeRes.json();
-                    claudeText = claudeData.content[0].text;
-                    claudeSuccess = true;
-                    console.log(`[FAST-ORDER-INV] Fallback exitoso con ${claudeModel}`);
-                    break;
-                } else {
-                    const errText = await claudeRes.text();
-                    console.error(`[FAST-ORDER-INV] Claude API error con ${claudeModel}:`, errText);
+            for (const claudeModel of claudeModels) {
+                console.log(`[FAST-ORDER-INV] Intentando fallback con Claude: ${claudeModel}...\n`);
+                let currentMessages = [...formattedMessages];
+                let resolvedText = '';
+                let success = false;
+
+                try {
+                    while (true) {
+                        const requestBody: any = {
+                            model: claudeModel,
+                            max_tokens: 1024,
+                            system: promptWrapper,
+                            messages: currentMessages
+                        };
+
+                        if (hasCalendar && claudeTools.length > 0) {
+                            requestBody.tools = claudeTools;
+                        }
+
+                        const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+                            method: 'POST',
+                            headers: {
+                                'x-api-key': process.env.ANTHROPIC_API_KEY,
+                                'anthropic-version': '2023-06-01',
+                                'content-type': 'application/json'
+                            },
+                            body: JSON.stringify(requestBody)
+                        });
+
+                        if (!claudeRes.ok) {
+                            const errText = await claudeRes.text();
+                            console.error(`[FAST-ORDER-INV] Claude API error con ${claudeModel}:`, errText);
+                            break;
+                        }
+
+                        const claudeData = await claudeRes.json();
+                        
+                        // Si Claude decide usar una herramienta
+                        if (claudeData.stop_reason === 'tool_use') {
+                            // Agregar la respuesta del asistente (que contiene el tool_use) al historial
+                            currentMessages.push({
+                                role: 'assistant',
+                                content: claudeData.content
+                            });
+
+                            const toolResultBlocks = [];
+
+                            for (const block of claudeData.content) {
+                                if (block.type === 'tool_use') {
+                                    const { id, name, input } = block;
+                                    let functionResponseData = {};
+
+                                    try {
+                                        if (name === 'check_availability') {
+                                            const { date_from, date_to } = input;
+                                            const slots = await getAvailabilityInternal(connection, date_from, date_to);
+                                            functionResponseData = { slots };
+                                        } else if (name === 'create_appointment') {
+                                            const app = await createAppointmentInternal(supabase, tenantId, botId, connection, input);
+                                            functionResponseData = { success: true, appointment_id: app.id };
+                                        } else if (name === 'cancel_appointment') {
+                                            const { appointment_id, reason } = input;
+                                            await cancelAppointmentInternal(supabase, tenantId, connection, appointment_id, reason);
+                                            functionResponseData = { success: true };
+                                        }
+                                    } catch (e: any) {
+                                        console.error('[FAST-ORDER-INV] Error ejecutando Claude function call:', e);
+                                        functionResponseData = { error: e.message || 'Error executing function' };
+                                    }
+
+                                    toolResultBlocks.push({
+                                        type: 'tool_result',
+                                        tool_use_id: id,
+                                        content: JSON.stringify(functionResponseData)
+                                    });
+                                }
+                            }
+
+                            // Enviar los resultados de las herramientas en el siguiente turno como mensaje de usuario
+                            currentMessages.push({
+                                role: 'user',
+                                content: toolResultBlocks
+                            });
+
+                            // Continuar el bucle para enviarle el resultado a Claude
+                            continue;
+                        } else {
+                            // Respuesta de texto final
+                            const textBlock = claudeData.content.find((b: any) => b.type === 'text');
+                            resolvedText = textBlock ? textBlock.text : '';
+                            success = true;
+                            break;
+                        }
+                    }
+
+                    if (success) {
+                        claudeText = resolvedText;
+                        claudeSuccess = true;
+                        break;
+                    }
+                } catch (claudeErr: any) {
+                    console.error(`[FAST-ORDER-INV] Excepción en flujo Claude con ${claudeModel}:`, claudeErr.message);
                 }
             }
 
