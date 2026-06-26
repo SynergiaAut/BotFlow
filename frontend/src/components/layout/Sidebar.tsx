@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import {
     LayoutDashboard, MessageSquareText, Users, LogOut,
     FlaskConical, Database, Network, Sparkles, Palette, ChevronRight,
-    Settings, Info, ChevronLeft
+    Settings, Info, ChevronLeft, Calendar
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
@@ -55,6 +55,12 @@ const routes = [
         icon: Users,
         href: "/dashboard/crm",
         color: "#00B4DB",
+    },
+    {
+        label: "Agenda",
+        icon: Calendar,
+        href: "/dashboard/agenda",
+        color: "#10B981",
     },
     {
         label: "Base de Conocimiento",

@@ -1,8 +1,9 @@
 "use client"
 
+import Link from 'next/link'
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, Settings, Key, ShieldAlert, Bell, Globe, ArrowRight } from 'lucide-react'
+import { Sparkles, Settings, Key, ShieldAlert, Bell, Globe, ArrowRight, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function SettingsPage() {
@@ -42,6 +43,24 @@ export default function SettingsPage() {
                         <Button className="h-10 rounded-xl bg-[#00B4DB] hover:bg-[#26C7EA] text-white text-xs font-black uppercase tracking-widest px-5 gap-2">
                             Gestionar Llaves <ArrowRight className="w-4 h-4" />
                         </Button>
+                    </div>
+
+                    {/* Calendar & Agenda Settings */}
+                    <div className="bg-[#0B0F17] border border-white/10 rounded-[32px] p-8 space-y-6 hover:border-[#00B4DB]/30 transition-all duration-300">
+                        <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center">
+                            <Calendar className="w-6 h-6 text-sky-400" />
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-xl font-black text-white tracking-tight">Agenda & Calendario</h3>
+                            <p className="text-xs text-[#A6B3C4] leading-relaxed">
+                                Conecta y gestiona tu calendario (Google Calendar o Cal.com) para permitir agendamientos automáticos con tus bots.
+                            </p>
+                        </div>
+                        <Link href="/dashboard/settings/calendar">
+                            <Button className="h-10 rounded-xl bg-[#00B4DB] hover:bg-[#26C7EA] text-white text-xs font-black uppercase tracking-widest px-5 gap-2 w-full md:w-auto">
+                                Configurar Calendario <ArrowRight className="w-4 h-4" />
+                            </Button>
+                        </Link>
                     </div>
 
                     {/* Notifications */}
