@@ -5,6 +5,11 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { Humanizer } from './humanizer';
 import dns from 'node:dns';
 
+// Importaciones para Integración de Calendario
+import { decrypt } from '@/utils/calendar-encrypt';
+import { getFreeSlots, createEvent, deleteEvent } from '@/utils/google-calendar';
+import { getCalcomAvailability, createCalcomBooking, cancelCalcomBooking } from '@/utils/calcom-api';
+
 // Estabilidad Synerg-IA: Forzar IPv4 para evitar cuelgues en VPS (Hetzner/Ubuntu 24)
 if (typeof dns.setDefaultResultOrder === 'function') {
     dns.setDefaultResultOrder('ipv4first');
@@ -20,6 +25,107 @@ export interface EngineResult {
     text?: string;
     conversationId: string;
     fragments?: { text: string; delayMs: number; typingMs: number }[];
+}
+
+// Funciones Helper para Function Calling del Calendario
+async function getAvailabilityInternal(connection: any, dateFrom: string, dateTo: string) {
+    if (connection.provider === 'google') {
+        const refreshToken = decrypt(connection.google_refresh_token);
+        const slots = await getFreeSlots(refreshToken, {
+            calendarId: connection.google_calendar_id || 'primary',
+            dateFrom,
+            dateTo,
+            availabilityDays: connection.availability_days || [1, 2, 3, 4, 5],
+            availabilityStart: connection.availability_start || '08:00',
+            availabilityEnd: connection.availability_end || '18:00',
+            timezone: connection.timezone || 'America/Bogota'
+        });
+        return slots.filter(s => s.available).map(s => s.datetime);
+    } else if (connection.provider === 'calcom') {
+        const apiKey = decrypt(connection.calcom_api_key);
+        const slots = await getCalcomAvailability(apiKey, {
+            eventTypeId: connection.calcom_event_type_id,
+            dateFrom,
+            dateTo,
+            timezone: connection.timezone || 'America/Bogota'
+        });
+        return slots.map(s => s.datetime);
+    }
+    return [];
+}
+
+async function createAppointmentInternal(supabase: SupabaseClient, tenantId: string, botId: string, connection: any, args: any) {
+    const { contact_name, contact_phone, scheduled_at, duration_minutes = 30, service_title, notes } = args;
+
+    let providerEventId = '';
+    if (connection.provider === 'google') {
+        const refreshToken = decrypt(connection.google_refresh_token);
+        const event = await createEvent(refreshToken, connection.google_calendar_id || 'primary', {
+            title: `${service_title} - ${contact_name}`,
+            description: notes,
+            startTime: scheduled_at,
+            durationMinutes: duration_minutes,
+            contactPhone: contact_phone
+        });
+        providerEventId = event.id!;
+    } else if (connection.provider === 'calcom') {
+        const apiKey = decrypt(connection.calcom_api_key);
+        const booking = await createCalcomBooking(apiKey, connection.calcom_event_type_id, {
+            name: contact_name,
+            phone: contact_phone,
+            startTime: scheduled_at,
+            notes: notes
+        });
+        providerEventId = String(booking.uid || booking.id);
+    }
+
+    const { data, error } = await supabase
+        .from('appointments')
+        .insert({
+            tenant_id: tenantId,
+            bot_id: botId || null,
+            contact_name,
+            contact_phone: contact_phone || null,
+            scheduled_at,
+            duration_minutes,
+            service_title,
+            notes: notes || null,
+            status: 'confirmed',
+            provider: connection.provider,
+            provider_event_id: providerEventId
+        })
+        .select('*')
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+async function cancelAppointmentInternal(supabase: SupabaseClient, tenantId: string, connection: any, appointmentId: string, reason?: string) {
+    const { data: appointment, error: appError } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('id', appointmentId)
+        .eq('tenant_id', tenantId)
+        .single();
+
+    if (appError || !appointment) throw new Error('Appointment not found');
+
+    if (connection.provider === 'google') {
+        const refreshToken = decrypt(connection.google_refresh_token);
+        await deleteEvent(refreshToken, connection.google_calendar_id || 'primary', appointment.provider_event_id);
+    } else if (connection.provider === 'calcom') {
+        const apiKey = decrypt(connection.calcom_api_key);
+        await cancelCalcomBooking(apiKey, appointment.provider_event_id, reason);
+    }
+
+    const { error } = await supabase
+        .from('appointments')
+        .update({ status: 'cancelled' })
+        .eq('id', appointmentId);
+
+    if (error) throw error;
+    return true;
 }
 
 /**
@@ -125,7 +231,7 @@ export async function processBotMessage(
         conversationId = newConv?.id;
     }
 
-        if (!conversationId) throw new Error("Conversation failure");
+    if (!conversationId) throw new Error("Conversation failure");
 
     // 2. Persistir el mensaje del usuario
     const lastUserMessage = messages[messages.length - 1];
@@ -287,7 +393,7 @@ REGLAS DE ORO DE INTELIGENCIA:
 2. PRIORIDAD VISUAL: Si el usuario usa palabras como "MUÉSTRAME", "VER" o "FOTO", y el producto tiene una "URL_FOTO", DEBES enviarla usando el formato exacto ![Nombre](URL_FOTO).
 3. LINKS DE INFO: Si el producto tiene un "LINK_INFO" (y no URL_FOTO), entrégalo como un link normal de texto.
 4. MEMORIA: Responde a la ÚLTIMA pregunta del historial. 
-5. SALUDO: \${isFirstMessage ? 'NUEVA CHARLA: Saluda según tu personalidad.' : 'SIN RE-SALUDOS: Ya estás hablando con el cliente.'}
+5. SALUDO: ${isFirstMessage ? 'NUEVA CHARLA: Saluda según tu personalidad.' : 'SIN RE-SALUDOS: Ya estás hablando con el cliente.'}
 6. CONCISIÓN EXTREMA: Responde de forma muy corta, resumida, directa y al grano. Evita explicaciones largas o párrafos extensos. Limita tu respuesta a un máximo de 2 o 3 oraciones por mensaje.
 
 REGLAS DE CATÁLOGO:
@@ -304,7 +410,17 @@ ${ragContext}
 ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en ayudar al cliente.`}
 `;
 
-        const modelsToTry = [
+    // Consultar conexión de calendario activa para el RLS
+    const { data: connection } = await supabase
+        .from('calendar_connections')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+    const hasCalendar = !!connection;
+
+    const modelsToTry = [
         'gemini-2.5-flash',
         'gemini-2.0-flash',
         'gemini-1.5-flash',
@@ -314,10 +430,60 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
 
     for (const modelName of modelsToTry) {
         try {
-            const model = genAI.getGenerativeModel({
+            const modelOptions: any = {
                 model: modelName,
                 systemInstruction: promptWrapper
-            });
+            };
+
+            // Inyectar herramientas de agendamiento si hay calendario conectado
+            if (hasCalendar) {
+                modelOptions.tools = [{
+                    functionDeclarations: [
+                        {
+                            name: "check_availability",
+                            description: "Consulta los horarios disponibles para agendar una cita. Úsala cuando el usuario quiera saber cuándo puede agendar.",
+                            parameters: {
+                                type: "OBJECT",
+                                properties: {
+                                    date_from: { type: "STRING", description: "Fecha inicio en formato YYYY-MM-DD" },
+                                    date_to: { type: "STRING", description: "Fecha fin en formato YYYY-MM-DD" }
+                                },
+                                required: ["date_from", "date_to"]
+                            }
+                        },
+                        {
+                            name: "create_appointment",
+                            description: "Crea una cita confirmada por el usuario. SOLO llamar después de que el usuario haya confirmado explícitamente la fecha y hora.",
+                            parameters: {
+                                type: "OBJECT",
+                                properties: {
+                                    contact_name: { type: "STRING" },
+                                    contact_phone: { type: "STRING" },
+                                    scheduled_at: { type: "STRING", description: "ISO 8601 con timezone. Ej: 2026-06-24T10:00:00-05:00" },
+                                    duration_minutes: { type: "NUMBER", description: "Duración en minutos. Default: 30" },
+                                    service_title: { type: "STRING", description: "Nombre del servicio o motivo de la cita" },
+                                    notes: { type: "STRING", description: "Notas adicionales del cliente" }
+                                },
+                                required: ["contact_name", "scheduled_at", "service_title"]
+                            }
+                        },
+                        {
+                            name: "cancel_appointment",
+                            description: "Cancela una cita existente. SOLO si el usuario confirma que quiere cancelar.",
+                            parameters: {
+                                type: "OBJECT",
+                                properties: {
+                                    appointment_id: { type: "STRING" },
+                                    reason: { type: "STRING" }
+                                },
+                                required: ["appointment_id"]
+                            }
+                        }
+                    ]
+                }];
+            }
+
+            const model = genAI.getGenerativeModel(modelOptions);
 
             let rolesAlt: any[] = [];
             for (const m of contextMessages) {
@@ -332,11 +498,78 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
                 rolesAlt.push({ role: 'user', parts: [{ text: 'Continúa' }] });
             }
             if (rolesAlt.length === 0) rolesAlt.push({ role: 'user', parts: [{ text: 'Hola' }] });
+            
             const googleMessages = { contents: rolesAlt };
-
-            // Verificamos si debemos HUMANIZAR (Fraccionar)
             const shouldHumanize = botData?.humanization_enabled && botData?.split_messages;
 
+            // --- CASO A: TIENE CALENDARIO (Usa startChat con Function Calling) ---
+            if (hasCalendar) {
+                const chatSession = model.startChat({
+                    history: rolesAlt.slice(0, -1)
+                });
+
+                const lastMsg = rolesAlt[rolesAlt.length - 1].parts[0].text;
+                let response = await chatSession.sendMessage(lastMsg);
+
+                // Resolver llamadas de función en bucle
+                while (response.functionCalls && response.functionCalls.length > 0) {
+                    const functionCall = response.functionCalls[0];
+                    const { name, args } = functionCall;
+
+                    let functionResponseData: any = {};
+                    try {
+                        if (name === 'check_availability') {
+                            const { date_from, date_to } = args as any;
+                            const slots = await getAvailabilityInternal(connection, date_from, date_to);
+                            functionResponseData = { slots };
+                        } else if (name === 'create_appointment') {
+                            const app = await createAppointmentInternal(supabase, tenantId, botId, connection, args);
+                            functionResponseData = { success: true, appointment_id: app.id };
+                        } else if (name === 'cancel_appointment') {
+                            const { appointment_id, reason } = args as any;
+                            await cancelAppointmentInternal(supabase, tenantId, connection, appointment_id, reason);
+                            functionResponseData = { success: true };
+                        }
+                    } catch (e: any) {
+                        console.error('[FAST-ORDER-INV] Error ejecutando function call del bot:', e);
+                        functionResponseData = { error: e.message || 'Error executing function' };
+                    }
+
+                    // Reportar resultado a Gemini
+                    response = await chatSession.sendMessage([
+                        {
+                            functionResponse: {
+                                name,
+                                response: functionResponseData
+                            }
+                        }
+                    ]);
+                }
+
+                const cleanedContent = response.text;
+                const { cleanedContent: finalContent } = processAssistantActions(cleanedContent, actualContactId, conversationId, supabase);
+
+                // Persistir mensaje del bot
+                await supabase.from('messages').insert({
+                    tenant_id: tenantId,
+                    conversation_id: conversationId,
+                    role: 'assistant',
+                    content: finalContent
+                });
+
+                if (shouldHumanize) {
+                    const humanizer = new Humanizer({
+                        wordsPerMinute: botData?.words_per_minute,
+                        maxCharsPerFragment: botData?.max_chars_per_fragment
+                    });
+                    const fragments = humanizer.getSequence(finalContent);
+                    return { text: finalContent, conversationId, fragments };
+                }
+
+                return { text: finalContent, conversationId };
+            }
+
+            // --- CASO B: NO TIENE CALENDARIO (Mantiene flujo original intacto) ---
             if (streamResponse && !shouldHumanize) {
                 // Streaming tradicional (sin fraccionar)
                 const streamingResponse = await model.generateContentStream(googleMessages);
