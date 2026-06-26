@@ -512,8 +512,9 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
                 let response = await chatSession.sendMessage(lastMsg);
 
                 // Resolver llamadas de función en bucle
-                while (response.functionCalls && response.functionCalls.length > 0) {
-                    const functionCall = response.functionCalls[0];
+                let functionCalls = response.response.functionCalls();
+                while (functionCalls && functionCalls.length > 0) {
+                    const functionCall = functionCalls[0];
                     const { name, args } = functionCall;
 
                     let functionResponseData: any = {};
@@ -544,9 +545,11 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
                             }
                         }
                     ]);
+
+                    functionCalls = response.response.functionCalls();
                 }
 
-                const cleanedContent = response.text;
+                const cleanedContent = response.response.text();
                 const { cleanedContent: finalContent } = processAssistantActions(cleanedContent, actualContactId, conversationId, supabase);
 
                 // Persistir mensaje del bot
