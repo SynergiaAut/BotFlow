@@ -4,6 +4,13 @@ import { createClient, getActiveTenantId } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+
+function getBaseUrl(req: Request) {
+    const proto = req.headers.get('x-forwarded-proto') || 'https';
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'console.skylab.synergiaautomation.com';
+    return `${proto}://${host}`;
+}
+
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
@@ -30,7 +37,7 @@ export async function GET(req: Request) {
 
         if (!refreshToken) {
             console.error('[FAST-ORDER-INV] No refresh token returned from Google Calendar OAuth');
-            return NextResponse.redirect(new URL('/dashboard/settings/calendar?error=no_refresh_token', req.url));
+            return NextResponse.redirect(new URL('/dashboard/settings/calendar?error=no_refresh_token', getBaseUrl(req)));
         }
 
         // Obtener el Tenant activo del usuario autenticado
@@ -58,12 +65,12 @@ export async function GET(req: Request) {
 
         if (error) {
             console.error('[FAST-ORDER-INV] Error al guardar la conexión de Google Calendar:', error.message);
-            return NextResponse.redirect(new URL('/dashboard/settings/calendar?error=database_error', req.url));
+            return NextResponse.redirect(new URL('/dashboard/settings/calendar?error=database_error', getBaseUrl(req)));
         }
 
-        return NextResponse.redirect(new URL('/dashboard/settings/calendar?success=google', req.url));
+        return NextResponse.redirect(new URL('/dashboard/settings/calendar?success=google', getBaseUrl(req)));
     } catch (error: any) {
         console.error('[FAST-ORDER-INV] Error en Callback de Google Calendar OAuth:', error);
-        return NextResponse.redirect(new URL('/dashboard/settings/calendar?error=unknown', req.url));
+        return NextResponse.redirect(new URL('/dashboard/settings/calendar?error=unknown', getBaseUrl(req)));
     }
 }
