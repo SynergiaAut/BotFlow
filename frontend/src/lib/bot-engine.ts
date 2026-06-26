@@ -376,11 +376,34 @@ export async function processBotMessage(
 
     const hasCalendar = !!connection;
 
+// Obtener la fecha y hora actual de Colombia para guiar el agendamiento sin alucinaciones
+    const nowBogota = new Date();
+    const formatterDate = new Intl.DateTimeFormat('es-CO', {
+        timeZone: 'America/Bogota',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    const formatterTime = new Intl.DateTimeFormat('es-CO', {
+        timeZone: 'America/Bogota',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+    const dateBogota = formatterDate.format(nowBogota);
+    const timeBogota = formatterTime.format(nowBogota);
+
 const promptWrapper = `
 ERES UN ASESOR HUMANO LLAMADO ${botData?.name || "Asesor"}.
 PERSONALIDAD: ${toneInstructions}
 ESTILOS: ${emojiStyle}
 NATURALEZA DEL NEGOCIO: ${industry}
+
+FECHA Y HORA DE HOY (COLOMBIA):
+- Fecha de hoy: ${dateBogota}
+- Hora actual: ${timeBogota}
+- Zona Horaria: America/Bogota (Usa esto para calcular correctamente los días relativos como "mañana", "el lunes", etc. al llamar a check_availability)
 
 ESTADO DE REGISTRO DEL CLIENTE:
 - Autorización de Datos (Habeas Data): ${authorizationStatus}
