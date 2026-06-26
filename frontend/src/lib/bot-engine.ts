@@ -366,7 +366,17 @@ export async function processBotMessage(
     const contactEmail = contactData?.email ? contactData.email : "NO_CAPTURED";
     const contactPhone = contactData?.phone_number ? contactData.phone_number : "NO_CAPTURED";
 
-    const promptWrapper = `
+    // Consultar conexión de calendario activa para el RLS
+    const { data: connection } = await supabase
+        .from('calendar_connections')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+    const hasCalendar = !!connection;
+
+const promptWrapper = `
 ERES UN ASESOR HUMANO LLAMADO ${botData?.name || "Asesor"}.
 PERSONALIDAD: ${toneInstructions}
 ESTILOS: ${emojiStyle}
@@ -404,21 +414,26 @@ REGLAS DE CATÁLOGO:
 FLUJO DE CIERRE DE CONVERSACIÓN:
 - Si la conversación ha concluido (el usuario se despide, agradece, o ya se agendó la demo/cita de forma exitosa), despídete cordialmente y finaliza incluyendo el tag exacto [CLOSE_CONVERSATION_ACTION] en tu respuesta para cerrar la sesión de chat.
 
+${hasCalendar ? `
+REGLAS DE AGENDAMIENTO Y CALENDARIO (INTEGRACIÓN ACTIVA):
+1. Tienes acceso a herramientas de calendario para consultar disponibilidad y agendar/cancelar citas.
+2. Cuando el usuario exprese interés en agendar una cita o reunión, o pregunte por disponibilidad, DEBES llamar a 'check_availability' especificando un rango de fechas razonable (por ejemplo, desde hoy hasta dentro de 3 o 5 días).
+3. Presenta al usuario los horarios libres de forma amigable (ej: "Tengo espacio mañana a las 10:00 AM o a las 2:00 PM").
+4. REGLA DE ORO DE CONFIRMACIÓN: NO llames a 'create_appointment' sin que el usuario haya aceptado o confirmado explícitamente una fecha y hora específicas. Primero propone los horarios, y cuando el usuario responda confirmando uno (ej: "Sí, a las 10:00 AM está bien"), entonces y SOLO ENTONCES llama a 'create_appointment'.
+5. Al llamar a 'create_appointment', asegúrate de pasar los argumentos requeridos:
+   - 'contact_name': El nombre del cliente (${contactName !== 'NO_CAPTURED' ? contactName : 'el nombre que te proporcione el usuario'}).
+   - 'scheduled_at': La fecha y hora en formato ISO 8601 con zona horaria (ej: 2026-06-24T10:00:00-05:00).
+   - 'service_title': El motivo o servicio de la cita (ej: "Asesoría Comercial", "Reunión de demostración").
+6. Si el usuario te indica que desea cancelar una cita, y tienes el ID de la cita o te lo proporciona, llama a 'cancel_appointment'.
+` : ''}
+
 CONTEXTO DEL NEGOCIO:
 ${ragContext}
 
 ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en ayudar al cliente.`}
 `;
 
-    // Consultar conexión de calendario activa para el RLS
-    const { data: connection } = await supabase
-        .from('calendar_connections')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('status', 'active')
-        .maybeSingle();
-
-    const hasCalendar = !!connection;
+    
 
     const modelsToTry = [
         'gemini-2.5-flash',
