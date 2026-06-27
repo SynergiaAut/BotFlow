@@ -54,11 +54,11 @@ export default function AppointmentCard({ appointment, onUpdate }: AppointmentCa
     });
 
     const statusConfig = {
-        confirmed: { label: 'Confirmada', color: 'bg-green-500/10 text-green-600 hover:bg-green-500/10 border-green-200' },
-        cancelled: { label: 'Cancelada', color: 'bg-red-500/10 text-red-600 hover:bg-red-500/10 border-red-200' },
-        rescheduled: { label: 'Reprogramada', color: 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/10 border-blue-200' },
-        pending: { label: 'Pendiente', color: 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/10 border-amber-200' }
-    }[status] || { label: status, color: 'bg-zinc-100 text-zinc-600' };
+        confirmed: { label: 'Confirmada', color: 'bg-green-500/10 text-green-400 hover:bg-green-500/20 border-green-500/30' },
+        cancelled: { label: 'Cancelada', color: 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/30' },
+        rescheduled: { label: 'Reprogramada', color: 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border-blue-500/30' },
+        pending: { label: 'Pendiente', color: 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border-amber-500/30' }
+    }[status] || { label: status, color: 'bg-zinc-800 text-zinc-300' };
 
     return (
         <Card className="border border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950/40 hover:border-zinc-200 dark:hover:border-zinc-800 transition-all shadow-sm">

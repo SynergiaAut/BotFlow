@@ -101,14 +101,14 @@ export default function AgendaView() {
             </div>
 
             {/* Barra de Filtros */}
-            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-zinc-50 dark:bg-zinc-900/30 p-4 rounded-2xl border border-zinc-100/50 dark:border-zinc-900/50">
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-[#0B0F17]/90 backdrop-blur-md p-4 rounded-2xl border border-white/10 shadow-lg">
                 <div className="relative w-full sm:max-w-xs">
                     <Input
                         type="text"
                         placeholder="Buscar por cliente o servicio..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="bg-white dark:bg-zinc-950 pl-9 border-zinc-200 focus:ring-amber-500"
+                        className="bg-[#111722]/50 text-white border-white/10 focus-visible:ring-1 focus-visible:ring-[#00B4DB]/50 focus-visible:border-[#00B4DB]/50 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 pl-9 rounded-xl"
                     />
                     <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-3.5" />
                 </div>
@@ -126,18 +126,18 @@ export default function AgendaView() {
                             variant={statusFilter === f.value ? 'default' : 'outline'}
                             onClick={() => setStatusFilter(f.value)}
                             size="sm"
-                            className={`text-xs font-semibold rounded-xl px-3 py-1.5 h-auto ${
+                            className={`text-xs font-semibold rounded-xl px-3 py-1.5 h-auto transition-all duration-200 ${
                                 statusFilter === f.value 
-                                    ? 'bg-amber-600 hover:bg-amber-700 text-white' 
-                                    : 'bg-white dark:bg-zinc-950 border-zinc-200 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50'
+                                    ? 'bg-[#00B4DB] hover:bg-[#00B4DB]/90 text-[#070B12] hover:text-[#070B12] shadow-md shadow-[#00B4DB]/20 border-transparent' 
+                                    : 'bg-[#111722]/40 hover:bg-[#111722]/80 border-white/5 text-zinc-400 hover:text-white'
                             }`}
                         >
                             {f.label}
                         </Button>
                     ))}
                     
-                    <Button variant="ghost" size="icon" onClick={fetchAppointments} disabled={loading} className="ml-2">
-                        <RefreshCw className={`w-4 h-4 text-zinc-500 ${loading ? 'animate-spin' : ''}`} />
+                    <Button variant="ghost" size="icon" onClick={fetchAppointments} disabled={loading} className="ml-2 hover:bg-white/5">
+                        <RefreshCw className={`w-4 h-4 text-zinc-400 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
                 </div>
             </div>
@@ -149,7 +149,7 @@ export default function AgendaView() {
                     <p className="text-sm text-zinc-500 font-semibold">Cargando agenda de citas...</p>
                 </div>
             ) : filteredAppointments.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center space-y-3 bg-zinc-50/50 dark:bg-zinc-900/10 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-3 bg-[#0B0F17]/40 rounded-2xl border border-dashed border-white/10">
                     <Calendar className="w-10 h-10 text-zinc-300" />
                     <div className="space-y-1">
                         <h4 className="font-bold text-zinc-900 dark:text-white">Sin citas encontradas</h4>
