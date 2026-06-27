@@ -394,6 +394,23 @@ export async function processBotMessage(
     const dateBogota = formatterDate.format(nowBogota);
     const timeBogota = formatterTime.format(nowBogota);
 
+    // Generar un mapa explícito de los próximos 8 días para evitar errores matemáticos de la IA
+    const daysList = [];
+    for (let i = 0; i < 8; i++) {
+        const d = new Date(nowBogota);
+        d.setDate(nowBogota.getDate() + i);
+        const dayName = new Intl.DateTimeFormat('es-CO', { weekday: 'long', timeZone: 'America/Bogota' }).format(d);
+        const dateFormatted = new Intl.DateTimeFormat('es-CO', {
+            timeZone: 'America/Bogota',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }).format(d);
+        const isoDate = d.toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' }); // YYYY-MM-DD
+        daysList.push(`- ${dayName} (${i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : ''}): ${dateFormatted} (${isoDate})`);
+    }
+    const upcomingDaysStr = daysList.join('\n');
+
 const promptWrapper = `
 ERES UN ASESOR HUMANO LLAMADO ${botData?.name || "Asesor"}.
 PERSONALIDAD: ${toneInstructions}
@@ -403,7 +420,11 @@ NATURALEZA DEL NEGOCIO: ${industry}
 FECHA Y HORA DE HOY (COLOMBIA):
 - Fecha de hoy: ${dateBogota}
 - Hora actual: ${timeBogota}
-- Zona Horaria: America/Bogota (Usa esto para calcular correctamente los días relativos como "mañana", "el lunes", etc. al llamar a check_availability)
+- Zona Horaria: America/Bogota
+
+CALENDARIO DE REFERENCIA PARA AGENDAMIENTO (Próximos 7 días):
+${upcomingDaysStr}
+(Usa esta tabla de referencia para mapear nombres de días a fechas exactas en formato YYYY-MM-DD. No hagas cálculos matemáticos de fechas por tu cuenta, básate estrictamente en esta tabla para llamar a check_availability o crear citas).
 
 ESTADO DE REGISTRO DEL CLIENTE:
 - Autorización de Datos (Habeas Data): ${authorizationStatus}
