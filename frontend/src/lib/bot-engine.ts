@@ -57,6 +57,47 @@ async function getAvailabilityInternal(connection: any, dateFrom: string, dateTo
 async function createAppointmentInternal(supabase: SupabaseClient, tenantId: string, botId: string, connection: any, args: any) {
     const { contact_name, contact_phone, scheduled_at, duration_minutes = 30, service_title, notes } = args;
 
+    // 1. Eliminar cualquier cita confirmada previa para el mismo contacto en este tenant (Reprogramación automática)
+    try {
+        let query = supabase
+            .from('appointments')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .eq('status', 'confirmed');
+
+        if (contact_phone) {
+            query = query.eq('contact_phone', contact_phone);
+        } else {
+            query = query.eq('contact_name', contact_name);
+        }
+
+        const { data: existingApps } = await query;
+
+        if (existingApps && existingApps.length > 0) {
+            for (const app of existingApps) {
+                console.log(`[FAST-ORDER-INV] Cancelando cita previa por reprogramación: ${app.id}`);
+                try {
+                    if (connection.provider === 'google') {
+                        const refreshToken = decrypt(connection.google_refresh_token);
+                        await deleteEvent(refreshToken, connection.google_calendar_id || 'primary', app.provider_event_id);
+                    } else if (connection.provider === 'calcom') {
+                        const apiKey = decrypt(connection.calcom_api_key);
+                        await cancelCalcomBooking(apiKey, app.provider_event_id, "Reprogramación por el usuario");
+                    }
+
+                    await supabase
+                        .from('appointments')
+                        .update({ status: 'cancelled', notes: (app.notes || '') + '\n[Cancelada automáticamente por reprogramación]' })
+                        .eq('id', app.id);
+                } catch (cancelErr) {
+                    console.error('[FAST-ORDER-INV] Error al cancelar cita previa:', cancelErr);
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('[FAST-ORDER-INV] No se pudo verificar citas previas para cancelar:', err);
+    }
+
     let providerEventId = '';
     if (connection.provider === 'google') {
         const refreshToken = decrypt(connection.google_refresh_token);
