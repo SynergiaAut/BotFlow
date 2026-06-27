@@ -16,14 +16,15 @@ import {
     CalendarDays, 
     ChevronLeft, 
     ChevronRight,
-    List
+    List,
+    X
 } from 'lucide-react';
 
 export default function AgendaView() {
     const [appointments, setAppointments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     
-    // Configuración de Vistas (Por defecto iniciamos en vista calendario como se solicitó)
+    // Configuración de Vistas
     const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
     
     // Filtros y búsquedas
@@ -33,6 +34,7 @@ export default function AgendaView() {
     // Estado del calendario mensual
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [showDayModal, setShowDayModal] = useState(false);
 
     useEffect(() => {
         fetchAppointments();
@@ -356,7 +358,12 @@ export default function AgendaView() {
                                 return (
                                     <div
                                         key={idx}
-                                        onClick={() => setSelectedDate(cell.date)}
+                                        onClick={() => {
+                                            setSelectedDate(cell.date);
+                                            if (cellApps.length > 0) {
+                                                setShowDayModal(true);
+                                            }
+                                        }}
                                         className={`aspect-square min-h-[85px] p-2 flex flex-col justify-between rounded-xl transition-all duration-200 border cursor-pointer select-none ${
                                             !cell.isCurrentMonth
                                                 ? 'bg-transparent border-transparent opacity-20 hover:opacity-40'
@@ -416,7 +423,7 @@ export default function AgendaView() {
                         </div>
                     </div>
 
-                    {/* Detalle del día seleccionado */}
+                    {/* Detalle del día seleccionado debajo (Fallback por si cierran el modal) */}
                     <div className="space-y-4">
                         <div className="border-b border-white/10 pb-2">
                             <h4 className="text-sm font-black text-zinc-400 uppercase tracking-widest">
@@ -439,6 +446,69 @@ export default function AgendaView() {
                                 ))}
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL OVERLAY CON DETALLES COMPLETOS DEL DÍA AL SELECCIONARLO */}
+            {showDayModal && selectedDayAppointments.length > 0 && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-[#0B0F17] border border-white/10 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 text-white">
+                        {/* Header Modal */}
+                        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                            <div className="space-y-1">
+                                <h3 className="text-lg font-black text-white capitalize">
+                                    Citas del {formattedSelectedDay}
+                                </h3>
+                                <p className="text-xs text-zinc-400">
+                                    Tienes {selectedDayAppointments.length} {selectedDayAppointments.length === 1 ? 'cita programada' : 'citas programadas'} para este día.
+                                </p>
+                            </div>
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => setShowDayModal(false)}
+                                className="text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl"
+                            >
+                                <X className="w-5 h-5" />
+                            </Button>
+                        </div>
+                        
+                        {/* Listado de Tarjetas dentro del Modal */}
+                        <div className="flex-1 overflow-y-auto space-y-4 pr-1 py-1">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {selectedDayAppointments.map((app) => (
+                                    <AppointmentCard 
+                                        key={app.id} 
+                                        appointment={app} 
+                                        onUpdate={() => {
+                                            fetchAppointments();
+                                            // Si después de actualizar ya no hay citas en el día, cerramos el modal
+                                            const updatedApps = filteredAppointments.filter(a => {
+                                                const d = new Date(a.scheduled_at);
+                                                return d.getDate() === selectedDate.getDate() &&
+                                                       d.getMonth() === selectedDate.getMonth() &&
+                                                       d.getFullYear() === selectedDate.getFullYear() &&
+                                                       a.id !== app.id; // Excluir la que se acaba de cancelar si no se ha refrescado aún
+                                            });
+                                            if (updatedApps.length === 0) {
+                                                setShowDayModal(false);
+                                            }
+                                        }} 
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Footer Modal */}
+                        <div className="flex justify-end pt-3 border-t border-white/10">
+                            <Button 
+                                onClick={() => setShowDayModal(false)}
+                                className="bg-[#00B4DB] hover:bg-[#00B4DB]/90 text-[#070B12] font-semibold rounded-xl px-5 hover:text-[#070B12]"
+                            >
+                                Cerrar
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
