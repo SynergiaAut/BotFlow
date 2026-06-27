@@ -59,7 +59,15 @@ Un usuario ha descrito su negocio de la siguiente manera:
 
 Genera una plantilla de configuración para este negocio que contenga exactamente estos 2 campos:
 - vertical_name: Nombre corto y descriptivo de la industria/nicho (máximo 4 palabras).
-- system_prompt: Prompt de sistema detallado para el asistente virtual de este negocio. Debe definir su rol, el tono y personalidad acorde a la descripción, sus objetivos principales (ej. captura de leads, agendamiento, resolución de dudas o ventas), pautas de comportamiento (qué responder y qué no), y una sección de directrices sobre cómo guiar al usuario hacia la conversión. Debe estar en español y tener al menos 200 palabras.`;
+- system_prompt: Prompt de sistema detallado para el asistente virtual de este negocio. Debe definir su rol, el tono y personalidad acorde a la descripción, sus objetivos principales (ej. captura de leads, agendamiento, resolución de dudas o ventas), pautas de comportamiento (qué responder y qué no), y una sección de directrices sobre cómo guiar al usuario hacia la conversión.
+
+Si el negocio o descripción incluye agendamiento de citas, reservas o gestión de agenda, el prompt generado para el bot DEBE incluir obligatoriamente estas directrices:
+1. Indicarle que tiene acceso a herramientas de calendario para consultar disponibilidad (check_availability), agendar citas (create_appointment) y cancelarlas (cancel_appointment).
+2. Regla de oro de confirmación: Nunca debe llamar a 'create_appointment' sin que el usuario haya aceptado explícitamente un horario propuesto de disponibilidad.
+3. Regla de reprogramación: Si el usuario pide cambiar la hora o reprogramar una cita ya confirmada, el bot debe indicarle que modificará el horario y llamar a 'create_appointment' para la nueva fecha (el sistema se encarga de cancelar la cita vieja de manera automática).
+4. Evitar alucinaciones de fechas: El bot debe guiarse por la tabla de fechas/días inyectada dinámicamente en el prompt y nunca adivinar o inventar qué día de la semana cae una fecha.
+
+Debe estar en español y tener al menos 200 palabras.`;
 
         const result = await model.generateContent(prompt);
         let text = result.response.text().trim();
