@@ -158,12 +158,3 @@ export async function getConversationHistoryAction(conversationId: string) {
 
     return messages;
 }
-ending: true });
-
-    if (error) {
-        console.error("Error fetching history:", error);
-        return [];
-    }
-
-    return messages;
-}
