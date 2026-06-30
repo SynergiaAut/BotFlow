@@ -23,6 +23,20 @@ export default function RecentActivityClient({ initialConversations, tenantId }:
     const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
     const supabase = createClient();
 
+    const fetchRecent = async () => {
+        if (!tenantId) return;
+        const { data } = await supabase
+            .from('conversations')
+            .select('*, contacts(name, avatar_url)')
+            .eq('tenant_id', tenantId)
+            .order('created_at', { ascending: false })
+            .limit(8);
+        if (data) setConversations(data);
+    };
+
+    // Fetch inicial en el cliente (cubre el caso donde el SSR devuelve vacío)
+    useEffect(() => { fetchRecent(); }, [tenantId]);
+
     useEffect(() => {
         if (!tenantId) return;
 
@@ -33,30 +47,12 @@ export default function RecentActivityClient({ initialConversations, tenantId }:
                 schema: 'public',
                 table: 'conversations',
                 filter: `tenant_id=eq.${tenantId}`
-            }, async () => {
-                // Re-fetch los 5 más recientes cuando haya cualquier cambio
-                const { data } = await supabase
-                    .from('conversations')
-                    .select('*, contacts(name, avatar_url)')
-                    .eq('tenant_id', tenantId)
-                    .order('created_at', { ascending: false })
-                    .limit(8);
-                if (data) setConversations(data);
-            })
+            }, () => { fetchRecent(); })
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
                 table: 'messages',
-            }, async () => {
-                // También actualizar cuando llega un mensaje nuevo (conversación se vuelve activa)
-                const { data } = await supabase
-                    .from('conversations')
-                    .select('*, contacts(name, avatar_url)')
-                    .eq('tenant_id', tenantId)
-                    .order('created_at', { ascending: false })
-                    .limit(8);
-                if (data) setConversations(data);
-            })
+            }, () => { fetchRecent(); })
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
