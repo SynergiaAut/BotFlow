@@ -147,7 +147,7 @@ export async function getRecentConversationsAction(tenantId: string) {
 
     const { data, error } = await adminSupabase
         .from('conversations')
-        .select('*, contacts(name, avatar_url)')
+        .select('*, contacts(name)')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(8);

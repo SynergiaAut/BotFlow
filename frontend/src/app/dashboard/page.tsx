@@ -44,7 +44,7 @@ export default async function DashboardPage() {
         const [convs, recent, contacts] = await Promise.all([
             supabase.from('conversations').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: true }),
             // Admin client bypasses RLS for the contacts join
-            adminSupabase.from('conversations').select('*, contacts(name, avatar_url)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(8),
+            adminSupabase.from('conversations').select('*, contacts(name)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(8),
             supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId)
         ])
 

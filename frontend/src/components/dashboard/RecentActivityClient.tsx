@@ -12,7 +12,7 @@ interface Conversation {
     channel: string;
     status: string;
     created_at: string;
-    contacts?: { name?: string; avatar_url?: string } | null;
+    contacts?: { name?: string; avatar_url?: string | null } | null;
 }
 
 interface Props {
