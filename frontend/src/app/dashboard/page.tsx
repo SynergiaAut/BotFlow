@@ -1,5 +1,6 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -38,10 +39,12 @@ export default async function DashboardPage() {
     let closedConversations = 0
 
     if (tenantId) {
+        const adminSupabase = createAdminClient()
         // Parallelized Fetches for Maximum Performance
         const [convs, recent, contacts] = await Promise.all([
             supabase.from('conversations').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: true }),
-            supabase.from('conversations').select('*, contacts(name, avatar_url)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(5),
+            // Admin client bypasses RLS for the contacts join
+            adminSupabase.from('conversations').select('*, contacts(name, avatar_url)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(8),
             supabase.from('contacts').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId)
         ])
 

@@ -30,8 +30,10 @@ export default function RecentActivityClient({ initialConversations, tenantId }:
         if (data && data.length > 0) setConversations(data as any);
     };
 
-    // Fetch inicial en el cliente (usa server action, evita RLS del browser client)
-    useEffect(() => { fetchRecent(); }, [tenantId]);
+    // Fetch inicial en el cliente solo si el SSR no trajo datos
+    useEffect(() => {
+        if (initialConversations.length === 0) fetchRecent();
+    }, [tenantId]);
 
     useEffect(() => {
         if (!tenantId) return;
