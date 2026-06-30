@@ -57,6 +57,24 @@ async function getAvailabilityInternal(connection: any, dateFrom: string, dateTo
 async function createAppointmentInternal(supabase: SupabaseClient, tenantId: string, botId: string, connection: any, args: any) {
     const { contact_name, contact_phone, scheduled_at, duration_minutes = 30, service_title, notes } = args;
 
+    // 0. Verificar que el slot esté realmente disponible antes de crear
+    try {
+        const date = scheduled_at.split('T')[0]; // YYYY-MM-DD
+        const availableSlots = await getAvailabilityInternal(connection, date, date);
+        const scheduledMs = new Date(scheduled_at).getTime();
+        const slotIsAvailable = availableSlots.some(slot => {
+            return Math.abs(new Date(slot).getTime() - scheduledMs) < 5 * 60 * 1000; // ±5 min
+        });
+        if (!slotIsAvailable) {
+            throw new Error(`El horario solicitado (${scheduled_at}) ya no está disponible. Por favor, consulta los horarios libres actualizados y ofrece una alternativa al usuario.`);
+        }
+    } catch (e: any) {
+        // Si el error es nuestro de disponibilidad, re-lanzar para que el LLM lo maneje
+        if (e.message?.includes('ya no está disponible')) throw e;
+        // Si falla la verificación por otro motivo (API error), logear pero continuar
+        console.warn('[FAST-ORDER-INV] No se pudo verificar disponibilidad previa:', e.message);
+    }
+
     // 1. Eliminar cualquier cita confirmada previa para el mismo contacto en este tenant (Reprogramación automática)
     try {
         let query = supabase
@@ -223,6 +241,8 @@ export async function processBotMessage(
                     channel: channel,
                     platform_id: platformId,
                     name: channel === 'telegram' ? `User ${platformId}` : platformId,
+                    // WhatsApp: el platform_id ES el número de teléfono
+                    phone_number: channel === 'whatsapp' ? platformId : null,
                     data_authorized: false
                 })
                 .select('id, name, phone_number, email, data_authorized')
@@ -283,6 +303,25 @@ export async function processBotMessage(
             role: 'user',
             content: lastUserMessage.content
         });
+    }
+
+    // 2b. Detección directa de autorización — sin depender del LLM
+    // Si el contacto aún no autorizó y el mensaje contiene una keyword clara, actualizamos directo.
+    if (!contactData?.data_authorized && lastUserMessage?.role === 'user') {
+        const AUTHORIZATION_KEYWORDS = [
+            'acepto', 'autorizo', 'si autorizo', 'sí autorizo',
+            'acepto los terminos', 'acepto los términos', 'autorizo el tratamiento',
+            'acepto la politica', 'acepto la política', 'doy mi consentimiento',
+            'estoy de acuerdo', 'confirmo', 'apruebo'
+        ];
+        const msgLower = lastUserMessage.content.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        const userAuthorized = AUTHORIZATION_KEYWORDS.some(kw =>
+            msgLower.includes(kw.normalize('NFD').replace(/[̀-ͯ]/g, ''))
+        );
+        if (userAuthorized && actualContactId) {
+            await supabase.from('contacts').update({ data_authorized: true }).eq('id', actualContactId);
+            if (contactData) contactData.data_authorized = true;
+        }
     }
 
     // 3. Ejecutar Pipeline RAG

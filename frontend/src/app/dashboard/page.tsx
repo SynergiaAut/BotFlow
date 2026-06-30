@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { OverviewCharts } from '@/components/dashboard/overview-charts'
 import { Button } from '@/components/ui/button'
+import RecentActivityClient from '@/components/dashboard/RecentActivityClient'
 import { Input } from '@/components/ui/input'
 
 export default async function DashboardPage() {
@@ -195,39 +196,10 @@ export default async function DashboardPage() {
                     </div>
 
                     <div className="xl:col-span-4 flex flex-col gap-6">
-                        <div className="bg-[#0B0F17] rounded-[24px] border border-white/10 flex flex-col flex-1 min-h-[500px]">
-                            <div className="p-6 border-b border-white/10 flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Actividad Reciente
-                                    </h3>
-                                </div>
-                                <Link href="/dashboard/conversations">
-                                    <Button variant="ghost" size="sm" className="h-9 px-4 rounded-lg text-[13px] font-semibold text-[#00B4DB] hover:bg-[#0B0F17] transition-colors">Ver Todo</Button>
-                                </Link>
-                            </div>
-                            <div className="flex-1 overflow-y-auto p-5 space-y-2 custom-scrollbar">
-                                {recentConversations.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center opacity-40 gap-4">
-                                        <MessageSquareText className="w-10 h-10 text-[#7E8A9C]" />
-                                        <p className="text-xs font-bold text-[#A6B3C4] uppercase tracking-widest">Sin Actividad</p>
-                                    </div>
-                                ) : (
-                                    recentConversations.map((conv) => (
-                                        <div key={conv.id} className="p-4 hover:bg-[#0B0F17] border border-transparent hover:border-white/10 rounded-2xl transition-all flex items-center gap-4 group cursor-pointer">
-                                            <div className="w-10 h-10 rounded-full bg-[#0B0F17] border border-white/10 flex items-center justify-center text-sm font-bold text-white">
-                                                {conv.contacts?.avatar_url ? <img src={conv.contacts.avatar_url} alt="" className="w-full h-full object-cover rounded-full" /> : conv.contacts?.name?.charAt(0) || 'U'}
-                                            </div>
-                                            <div className="flex-1 truncate">
-                                                <p className="text-[14px] font-bold text-white group-hover:text-[#00B4DB] transition-colors">{conv.contacts?.name || 'Vistante Autónomo'}</p>
-                                                <p className="text-[11px] text-[#A6B3C4] font-medium mt-0.5">{conv.channel === 'web' ? 'Chat Web' : conv.channel}</p>
-                                            </div>
-                                            <ChevronRight className="w-4 h-4 text-[#7E8A9C] group-hover:text-[#00B4DB] transition-colors" />
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
+                        <RecentActivityClient
+                            initialConversations={recentConversations}
+                            tenantId={tenantId ?? ''}
+                        />
 
                         <div className="bg-[#0B0F17] border border-white/10 rounded-[24px] p-6 relative overflow-hidden group">
                            <h3 className="text-[12px] font-bold uppercase tracking-widest text-[#7E8A9C] mb-6 flex items-center gap-2">
@@ -289,4 +261,3 @@ function OperationLink({ href, label, icon }: { href: string, label: string, ico
         </Link>
     )
 }
-
