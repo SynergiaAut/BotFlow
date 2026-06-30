@@ -36,6 +36,14 @@ export default function RecentActivityClient({ initialConversations, tenantId }:
         if (initialConversations.length === 0) fetchRecent();
     }, [tenantId]);
 
+    // Polling fallback — actualiza cada 20s sin importar la config de Realtime
+    useEffect(() => {
+        if (!tenantId) return;
+        const interval = setInterval(fetchRecent, 20000);
+        return () => clearInterval(interval);
+    }, [tenantId]);
+
+    // Realtime — path instantáneo cuando está habilitado en Supabase
     useEffect(() => {
         if (!tenantId) return;
 
@@ -51,8 +59,11 @@ export default function RecentActivityClient({ initialConversations, tenantId }:
                 event: 'INSERT',
                 schema: 'public',
                 table: 'messages',
+                filter: `tenant_id=eq.${tenantId}`
             }, () => { fetchRecent(); })
-            .subscribe();
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') fetchRecent();
+            });
 
         return () => { supabase.removeChannel(channel); };
     }, [tenantId]);
