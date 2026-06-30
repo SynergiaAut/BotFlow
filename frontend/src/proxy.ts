@@ -1,9 +1,22 @@
-import { type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
+// Rutas públicas — no requieren autenticación
+const PUBLIC_PREFIXES = [
+    '/api/webhooks/',   // webhooks de Telegram, WhatsApp, etc.
+    '/api/widget/',     // widget embebido en sitios externos
+    '/api/health',      // health check
+    '/privacidad',      // política de datos (accesible sin login)
+]
+
 export async function proxy(request: NextRequest) {
-    // Llama a middleware y añade comprobaciones de headers/cookies para SSR
-    return await updateSession(request)
+    const { pathname } = request.nextUrl
+
+    if (PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+        return NextResponse.next()
+    }
+
+    return updateSession(request)
 }
 
 export const config = {
