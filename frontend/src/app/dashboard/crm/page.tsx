@@ -382,7 +382,3 @@ export default function CrmPage() {
         </div>
     );
 }
-nce>
-        </div>
-    );
-}
