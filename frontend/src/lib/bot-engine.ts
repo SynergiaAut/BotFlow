@@ -541,15 +541,21 @@ FLUJO DE CIERRE DE CONVERSACIÓN:
 ${hasCalendar ? `
 REGLAS DE AGENDAMIENTO Y CALENDARIO (INTEGRACIÓN ACTIVA):
 1. Tienes acceso a herramientas de calendario para consultar disponibilidad y agendar/cancelar citas.
-2. Cuando el usuario exprese interés en agendar una cita o reunión, o pregunte por disponibilidad, DEBES llamar a 'check_availability' especificando un rango de fechas razonable (por ejemplo, desde hoy hasta dentro de 3 o 5 días).
-3. Presenta al usuario los horarios libres de forma amigable (ej: "Tengo espacio mañana a las 10:00 AM o a las 2:00 PM").
-4. REGLA DE ORO DE CONFIRMACIÓN: NO llames a 'create_appointment' sin que el usuario haya aceptado o confirmado explícitamente una fecha y hora específicas. Primero propone los horarios, y cuando el usuario responda confirmando uno (ej: "Sí, a las 10:00 AM está bien"), entonces y SOLO ENTONCES llama a 'create_appointment'.
-5. Al llamar a 'create_appointment', asegúrate de pasar los argumentos requeridos:
-   - 'contact_name': El nombre del cliente (${contactName !== 'NO_CAPTURED' ? contactName : 'el nombre que te proporcione el usuario'}).
-   - 'scheduled_at': La fecha y hora en formato ISO 8601 con zona horaria (ej: 2026-06-24T10:00:00-05:00).
-   - 'service_title': El motivo o servicio de la cita (ej: "Asesoría Comercial", "Reunión de demostración").
-6. Si el usuario te indica que desea cancelar una cita, y tienes el ID de la cita o te lo proporciona, llama a 'cancel_appointment'.
-` : ''}
+2. Cuando el usuario exprese interés en agendar una cita o reunión, o pregunte por disponibilidad, DEBES llamar INMEDIATAMENTE a 'check_availability' con date_from = hoy (${new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' })}) y date_to = 5 días después. NO respondas con texto antes de llamar la herramienta.
+3. Presenta al usuario los horarios libres de forma amigable (ej: "Tengo espacio mañana a las 10:00 AM o a las 2:00 PM. ¿Cuál prefieres?").
+4. REGLA DE ORO DE CONFIRMACIÓN: NO llames a 'create_appointment' sin que el usuario haya confirmado explícitamente una fecha y hora. Primero muestra los slots disponibles, espera confirmación del usuario, y SOLO ENTONCES llama a 'create_appointment'.
+5. Al llamar a 'create_appointment':
+   - 'contact_name': ${contactName !== 'NO_CAPTURED' ? contactName : 'el nombre que te proporcione el usuario'}
+   - 'scheduled_at': Formato ISO 8601 con timezone (ej: 2026-06-24T10:00:00-05:00)
+   - 'service_title': Motivo de la cita (ej: "Asesoría Comercial", "Demo Enterprise")
+6. Si el usuario quiere cancelar una cita existente, llama a 'cancel_appointment' con el ID.
+` : `
+RESTRICCIÓN CRÍTICA — SIN ACCESO A CALENDARIO:
+- No tienes herramientas de calendario disponibles en este momento.
+- PROHIBIDO mencionar, ofrecer, prometer o intentar ejecutar agendamiento de citas, consulta de disponibilidad o cualquier acción relacionada con el calendario.
+- Si el usuario pide agendar una cita o pregunta por disponibilidad, responde exactamente esto: "Para coordinar una cita, por favor escríbenos directamente al equipo de ventas o déjame tu correo y te contactamos a la brevedad."
+- NO inventes horarios ni simules tener acceso al calendario.
+`}
 
 CONTEXTO DEL NEGOCIO:
 ${ragContext}
