@@ -1,6 +1,6 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { MessageSquareText, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -22,7 +22,8 @@ interface Props {
 
 export default function RecentActivityClient({ initialConversations, tenantId }: Props) {
     const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
-    const supabase = createClient();
+    // useMemo para que el cliente no se recree en cada render y el canal realtime sea estable
+    const supabase = useMemo(() => createClient(), []);
 
     const fetchRecent = async () => {
         if (!tenantId) return;
@@ -54,7 +55,7 @@ export default function RecentActivityClient({ initialConversations, tenantId }:
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
-    }, [tenantId, supabase]);
+    }, [tenantId]);
 
     return (
         <div className="bg-[#0B0F17] rounded-[24px] border border-white/10 flex flex-col flex-1 min-h-[500px]">

@@ -15,7 +15,7 @@ import {
     Search,
     ChevronRight,
     Command,
-    Zap
+
 } from 'lucide-react'
 import { OverviewCharts } from '@/components/dashboard/overview-charts'
 import { Button } from '@/components/ui/button'
@@ -78,24 +78,6 @@ export default async function DashboardPage() {
 
     const totalInteractions = conversations.length
     const efficiency = totalInteractions > 0 ? Math.round((closedConversations / totalInteractions) * 100) : 0
-
-    const insights = [
-        {
-            title: "Crecimiento de Leads",
-            desc: "Tu base de contactos creció un 12% esta semana.",
-            type: "positive"
-        },
-        {
-            title: "Optimización de Canal",
-            desc: "El 80% de tus chats vienen de la Web.",
-            type: "info"
-        },
-        {
-            title: "Alerta de Eficiencia",
-            desc: "Respuesta promedio subió 2min.",
-            type: "warning"
-        }
-    ]
 
     return (
         <div className="flex-1 overflow-y-auto bg-background p-8 md:p-12 relative">
@@ -172,29 +154,39 @@ export default async function DashboardPage() {
 
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                     <div className="xl:col-span-8 space-y-6">
-                        {/* Hostinger Horizons Style Hero Card */}
-                        <div className="bg-[#0a0a0a] rounded-[24px] p-8 lg:p-10 text-white relative overflow-hidden shadow-2xl">
-                            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#00B4DB]/20 blur-[120px] rounded-full pointer-events-none" />
-                            <div className="relative z-10 max-w-2xl mb-8">
-                                <h2 className="text-3xl lg:text-4xl font-extrabold tracking-tight mb-3">Impulsa tu negocio con agentes autónomos.</h2>
-                                <p className="text-[#7E8A9C] text-lg font-medium">Observa métricas, optimiza canales y escala la atención al cliente de forma automática.</p>
-                            </div>
-                            
-                            <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-5">
-                                {insights.map((insight, idx) => (
-                                    <div key={idx} className="bg-white/[0.05] rounded-2xl p-6 border border-white/[0.08] hover:bg-white/10 transition-colors">
-                                        <div className={`w-10 h-10 rounded-xl mb-4 flex items-center justify-center ${insight.type === 'positive' ? 'bg-emerald-500/20 text-emerald-400' : insight.type === 'warning' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                                            {insight.type === 'positive' ? <ArrowUpRight className="w-5 h-5" /> : <Zap className="w-5 h-5" />}
-                                        </div>
-                                        <h4 className="text-[11px] font-bold text-[#7E8A9C] uppercase tracking-widest mb-2">{insight.title}</h4>
-                                        <p className="text-[14px] text-white font-semibold leading-relaxed">&ldquo;{insight.desc}&rdquo;</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
+                        {/* Charts — protagonista */}
                         <div className="bg-[#0B0F17] border border-white/10 rounded-[24px] p-6">
                             <OverviewCharts volumeData={volumeData} channelData={channelData} />
+                        </div>
+
+                        {/* Estado Operativo */}
+                        <div className="bg-[#0B0F17] rounded-[24px] p-6 border border-white/10">
+                            <h3 className="text-[12px] font-bold uppercase tracking-widest text-[#7E8A9C] mb-5 flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-[#00B4DB]" /> Estado Operativo
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <OperationalCard
+                                    label="Conversaciones Abiertas"
+                                    value={String(conversations.filter(c => c.status === 'open').length)}
+                                    sub={`${conversations.length} total`}
+                                    type="info"
+                                    icon={<MessageSquareText className="w-4 h-4" />}
+                                />
+                                <OperationalCard
+                                    label="Tasa de Cierre"
+                                    value={`${efficiency}%`}
+                                    sub="conversaciones resueltas"
+                                    type={efficiency >= 60 ? 'positive' : 'warning'}
+                                    icon={<ShieldCheck className="w-4 h-4" />}
+                                />
+                                <OperationalCard
+                                    label="Leads Captados"
+                                    value={String(contactsCount)}
+                                    sub="contactos registrados"
+                                    type="positive"
+                                    icon={<Users className="w-4 h-4" />}
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -244,6 +236,26 @@ function ExecutiveKpi({ label, value, icon, trend, isUp, color }: any) {
             <div>
                 <p className="text-[12px] font-bold text-[#A6B3C4] uppercase tracking-wide mb-1">{label}</p>
                 <h3 className="text-3xl font-extrabold text-white tracking-tight">{value}</h3>
+            </div>
+        </div>
+    )
+}
+
+function OperationalCard({ label, value, sub, type, icon }: { label: string; value: string; sub: string; type: 'positive' | 'warning' | 'info'; icon: React.ReactNode }) {
+    const tones = {
+        positive: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        warning: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        info: 'bg-[#00B4DB]/10 text-[#00B4DB] border-[#00B4DB]/20',
+    }
+    return (
+        <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5 flex items-start gap-4">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${tones[type]}`}>
+                {icon}
+            </div>
+            <div>
+                <p className="text-[10px] font-bold text-[#7E8A9C] uppercase tracking-widest mb-1">{label}</p>
+                <p className="text-2xl font-extrabold text-white tracking-tight">{value}</p>
+                <p className="text-[11px] text-[#7E8A9C] mt-0.5">{sub}</p>
             </div>
         </div>
     )
