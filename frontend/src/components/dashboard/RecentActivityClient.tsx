@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { MessageSquareText, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { getRecentConversationsAction } from '@/app/dashboard/crm/actions';
 
 interface Conversation {
     id: string;
@@ -25,16 +26,11 @@ export default function RecentActivityClient({ initialConversations, tenantId }:
 
     const fetchRecent = async () => {
         if (!tenantId) return;
-        const { data } = await supabase
-            .from('conversations')
-            .select('*, contacts(name, avatar_url)')
-            .eq('tenant_id', tenantId)
-            .order('created_at', { ascending: false })
-            .limit(8);
-        if (data) setConversations(data);
+        const data = await getRecentConversationsAction(tenantId);
+        if (data && data.length > 0) setConversations(data as any);
     };
 
-    // Fetch inicial en el cliente (cubre el caso donde el SSR devuelve vacío)
+    // Fetch inicial en el cliente (usa server action, evita RLS del browser client)
     useEffect(() => { fetchRecent(); }, [tenantId]);
 
     useEffect(() => {

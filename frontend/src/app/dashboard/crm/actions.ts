@@ -141,6 +141,24 @@ export async function sendDirectMessageAction(
     return { success: true };
 }
 
+// Get Recent Conversations for Dashboard (server-side, handles RLS correctly)
+export async function getRecentConversationsAction(tenantId: string) {
+    const adminSupabase = createAdminClient();
+
+    const { data, error } = await adminSupabase
+        .from('conversations')
+        .select('*, contacts(name, avatar_url)')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+    if (error) {
+        console.error('[RECENT-CONVS] Error:', error);
+        return [];
+    }
+    return data ?? [];
+}
+
 // Get Conversation History
 export async function getConversationHistoryAction(conversationId: string) {
     const supabase = await createClient();
