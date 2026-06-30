@@ -580,13 +580,21 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
                 systemInstruction: promptWrapper
             };
 
+            // Detectar si el último mensaje del usuario pide disponibilidad/agenda
+            const calendarTriggerKeywords = [
+                'agenda', 'disponib', 'cita', 'agendar', 'reservar', 'horario', 'libre',
+                'cuándo', 'cuando', 'fecha', 'reunión', 'reunion', 'revisa', 'consulta'
+            ];
+            const lastUserText = (lastUserMessage?.content || '').toLowerCase();
+            const userWantsCalendar = calendarTriggerKeywords.some(kw => lastUserText.includes(kw));
+
             // Inyectar herramientas de agendamiento si hay calendario conectado
             if (hasCalendar) {
                 modelOptions.tools = [{
                     functionDeclarations: [
                         {
                             name: "check_availability",
-                            description: "Consulta los horarios disponibles para agendar una cita. Úsala cuando el usuario quiera saber cuándo puede agendar.",
+                            description: "OBLIGATORIO llamar cuando el usuario pregunta por disponibilidad, horarios, agenda, citas o quiere reservar. Devuelve los slots libres del calendario.",
                             parameters: {
                                 type: "OBJECT",
                                 properties: {
@@ -598,7 +606,7 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
                         },
                         {
                             name: "create_appointment",
-                            description: "Crea una cita confirmada por el usuario. SOLO llamar después de que el usuario haya confirmado explícitamente la fecha y hora.",
+                            description: "Crea una cita. SOLO llamar después de que el usuario haya confirmado explícitamente una fecha y hora específica.",
                             parameters: {
                                 type: "OBJECT",
                                 properties: {
@@ -626,6 +634,17 @@ ROL PERSONALIZADO: ${botData?.system_prompt || `Asesor ${industry} enfocado en a
                         }
                     ]
                 }];
+
+                // Forzar modo ANY (tool_use obligatorio) cuando el usuario claramente pide agenda
+                // Esto previene que Gemini elija responder con texto en vez de llamar la herramienta
+                if (userWantsCalendar) {
+                    modelOptions.toolConfig = {
+                        functionCallingConfig: {
+                            mode: 'ANY',
+                            allowedFunctionNames: ['check_availability']
+                        }
+                    };
+                }
             }
 
             const model = genAI.getGenerativeModel(modelOptions);
