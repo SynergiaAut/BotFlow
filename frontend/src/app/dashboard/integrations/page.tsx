@@ -33,6 +33,8 @@ import { Button } from '@/components/ui/button'
 import { connectTelegramAction, connectWhatsAppAction, getTenantBotsAction } from '@/app/actions/integrations'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { getWhatsAppWizardProgress } from './whatsapp/actions'
 import instagramIcon from '../../../../Iconos/instagram.png'
 import metaIcon from '../../../../Iconos/logo meta.png'
 import telegramIcon from '../../../../Iconos/telegrama.png'
@@ -290,6 +292,7 @@ const MetaConsoleSimulator = ({ step }: { step: number }) => {
 }
 
 export default function IntegrationsPage() {
+    const router = useRouter()
     const [selectedChannel, setSelectedChannel] = useState<ChannelId>(null)
     const [wizardStep, setWizardStep] = useState(1)
     const [token, setToken] = useState('')
@@ -299,6 +302,11 @@ export default function IntegrationsPage() {
     const [selectedBotId, setSelectedBotId] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [bots, setBots] = useState<{ id: string, name: string }[]>([])
+    const [whatsappSetup, setWhatsappSetup] = useState<{ active: boolean; step: number; exists: boolean; phone?: string; name?: string }>({
+        active: false,
+        step: 1,
+        exists: false
+    })
 
     useEffect(() => {
         const fetchBots = async () => {
@@ -308,7 +316,20 @@ export default function IntegrationsPage() {
                 if (res.bots[0]?.id) setSelectedBotId(res.bots[0].id)
             }
         };
+        const fetchWhatsAppStatus = async () => {
+            const res = await getWhatsAppWizardProgress()
+            if (res.success) {
+                setWhatsappSetup({
+                    active: res.is_active || false,
+                    step: (res.config as any)?.whatsapp_setup_step || 1,
+                    exists: res.exists || false,
+                    phone: (res.config as any)?.display_phone_number || undefined,
+                    name: (res.config as any)?.verified_name || undefined
+                })
+            }
+        }
         fetchBots();
+        fetchWhatsAppStatus();
     }, []);
 
     const handleConnectTelegram = async () => {
@@ -442,8 +463,15 @@ export default function IntegrationsPage() {
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-3">
-                                <Button onClick={() => setSelectedChannel('whatsapp')} className="h-12 rounded-xl bg-emerald-500 px-5 text-xs font-black uppercase tracking-widest text-[#05110A] hover:bg-emerald-400">
-                                    Configurar WhatsApp
+                                <Button 
+                                    onClick={() => router.push('/dashboard/integrations/whatsapp/setup')} 
+                                    className="h-12 rounded-xl bg-emerald-500 px-5 text-xs font-black uppercase tracking-widest text-[#05110A] hover:bg-emerald-400"
+                                >
+                                    {whatsappSetup.active 
+                                        ? 'Ver Configuración' 
+                                        : whatsappSetup.exists 
+                                            ? 'Retomar Configuración' 
+                                            : 'Configurar WhatsApp'}
                                 </Button>
                                 <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/" target="_blank" rel="noreferrer" className="inline-flex h-12 items-center gap-2 rounded-xl border border-white/10 px-5 text-xs font-black uppercase tracking-widest text-white hover:bg-white/5">
                                     Docs oficiales <ExternalLink className="h-4 w-4" />
@@ -495,7 +523,13 @@ export default function IntegrationsPage() {
                         <motion.div
                             key={channel.id}
                             whileHover={{ y: -8, scale: 1.02 }}
-                            onClick={() => channel.status !== 'coming_soon' ? setSelectedChannel(channel.id) : null}
+                            onClick={() => {
+                                if (channel.id === 'whatsapp') {
+                                    router.push('/dashboard/integrations/whatsapp/setup')
+                                } else if (channel.status !== 'coming_soon') {
+                                    setSelectedChannel(channel.id)
+                                }
+                            }}
                             className={`group bg-[#0B0F17] dark:bg-[#0B0F17] border border-white/10 dark:border-white/10 rounded-[40px] p-8 shadow-sm flex flex-col relative overflow-hidden transition-all duration-500 ${channel.status === 'coming_soon' ? 'opacity-60 cursor-not-allowed grayscale' : 'cursor-pointer hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-[#00B4DB]/30'}`}
                         >
                             {/* Card Glow Effect */}
@@ -509,7 +543,21 @@ export default function IntegrationsPage() {
                                         <channel.icon className="w-8 h-8 text-white" />
                                     )}
                                 </div>
-                                {channel.status === 'connected' ? (
+                                {channel.id === 'whatsapp' ? (
+                                    whatsappSetup.active ? (
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest rounded-full border border-emerald-500/20">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                                            Activo
+                                        </div>
+                                    ) : whatsappSetup.exists ? (
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-black uppercase tracking-widest rounded-full border border-amber-500/20 animate-pulse">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                            En Progreso
+                                        </div>
+                                    ) : (
+                                        <div className="px-3 py-1.5 bg-[#0B0F17] dark:bg-[#0B0F17] text-[#7E8A9C] text-[9px] font-black uppercase tracking-widest rounded-full italic opacity-60">Inactivo</div>
+                                    )
+                                ) : channel.status === 'connected' ? (
                                     <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest rounded-full border border-emerald-500/20">
                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
                                         Activo
