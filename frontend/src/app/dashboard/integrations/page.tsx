@@ -887,9 +887,18 @@ export default function IntegrationsPage() {
                                                         </div>
 
                                                         <div className="rounded-2xl border border-white/10 bg-slate-950 p-4">
-                                                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#7E8A9C]">Token de verificación (Verify Token)</p>
-                                                            <div className="mt-2 rounded-xl bg-white/[0.04] px-4 py-2.5 font-mono text-xs text-white">
-                                                                Usa el valor de <code className="text-[#00B4DB] font-bold">WHATSAPP_VERIFY_TOKEN</code> configurado en tu servidor.
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#7E8A9C]">Token de verificación (Verify Token)</p>
+                                                                {process.env.NEXT_PUBLIC_WHATSAPP_VERIFY_TOKEN && (
+                                                                    <button onClick={() => {
+                                                                        navigator.clipboard.writeText(process.env.NEXT_PUBLIC_WHATSAPP_VERIFY_TOKEN || '')
+                                                                    }} className="rounded-lg p-1.5 text-[#00B4DB] hover:bg-white/10 flex items-center gap-1.5 text-xs font-bold">
+                                                                        <Copy className="h-3.5 w-3.5" /> Copiar
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            <div className="mt-2 rounded-xl bg-white/[0.04] px-4 py-2.5 font-mono text-xs text-white truncate">
+                                                                {process.env.NEXT_PUBLIC_WHATSAPP_VERIFY_TOKEN || <span className="text-[#7E8A9C] italic">Token no configurado — agrega NEXT_PUBLIC_WHATSAPP_VERIFY_TOKEN al .env</span>}
                                                             </div>
                                                         </div>
 
